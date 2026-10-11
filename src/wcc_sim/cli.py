@@ -24,7 +24,7 @@ def build_parser():
     p.add_argument("--mag-limit", type=float, default=21.0, help="Gaia G faint limit")
     p.add_argument("--no-noise", action="store_true", help="skip noise realization")
     p.add_argument("--no-clean", action="store_true", help="omit CLEAN extension")
-    p.add_argument("--seed", type=int, default=None, help="RNG seed")
+    p.add_argument("--seed", type=int, default=None, help="RNG seed (default: drawn at random and recorded as SEED)")
     p.add_argument("--shape", type=int, nargs=2, metavar=("NY", "NX"), default=None,
                    help="subarray shape (default: full array)")
     p.add_argument("--stamp-npix", type=int, default=None,
