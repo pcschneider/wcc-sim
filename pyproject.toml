@@ -28,7 +28,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/schmidt-observatories/wcc-sim"
-Documentation = "https://wcc-sim.readthedocs.io"
+Documentation = "https://schmidt-observatories.github.io/wcc-sim/"
 Issues = "https://github.com/schmidt-observatories/wcc-sim/issues"
 
 [project.scripts]

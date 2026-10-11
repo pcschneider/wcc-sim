@@ -1,0 +1,42 @@
+# Changelog
+
+## 0.1.0 (unreleased)
+
+First public release.
+
+### Simulator (`wcc_sim`)
+- `simulate_field`: Gaia DR3 cone search (cached on disk, astrometry
+  propagated to the observation epoch, XHIP bright-star supplement), wcc-etc
+  count rates per spectral template, oversampled PSF rendering with sub-pixel
+  placement, the ETC noise model with full-well and ADC saturation, and a
+  multi-extension FITS product (`SCI`, `SATMASK`, `CAT`, `CLEAN`) with a TAN
+  WCS.
+- PSF modes: in-focus Airy at each star's effective wavelength, +1/+2-wave
+  Zemax Huygens defocus, optional Gaussian jitter, spectrum-weighted
+  chromatic PSFs.
+- Analytic diffraction-wing extension beyond the PSF stamp, and the measured
+  scattered-light halo (azimuthally averaged stray-light profile) as an
+  additive term that reaches across the whole array.
+- Extended sources: analytic Sersic components with reddening.
+- Detectors: Sony IMX455 (`zwo:*`) and Hamamatsu HWK4123 qCMOS (`qcmos:*`,
+  selectable gain mode); the per-frame saturation ceiling is recorded as
+  `SATLEVEL`.
+- `wcc-sim` command line.
+
+### Photometry (`wcc_phot`)
+- Differential aperture and PSF photometry on a series of frames: target and
+  reference selection, per-frame centroiding, quality flags, relative light
+  curve, one-page diagnostic report, live viewer.
+- `wcc-phot` command line.
+
+### Validation
+- TRAPPIST-1b transit recovery and M101 Cepheid period-luminosity scripts.
+- Monte Carlo cross-check of the wcc-etc signal and noise prediction against
+  simulated frames (`tests/test_etc_crosscheck.py`).
+
+### Fixes from the September 2026 audit
+- qCMOS saturation ceiling (#17), Gaia synchronous-query truncation (#19),
+  in-focus PSF wavelength (#20), synthetic BP-RP to template table with
+  colour-interpolated rates (#21), input validation and edge cases (#22),
+  catalog masks and spherical matching (#10), light-curve guards (#12),
+  defocus PSF centring (#18, with wcc-etc).

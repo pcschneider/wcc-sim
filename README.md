@@ -22,13 +22,13 @@ series of such frames.
 `wcc_etc` provides the instrument model and is not on PyPI, so install it from
 its repository first:
 ```sh
-git clone git@github.com:schmidt-observatories/wcc-etc.git
+git clone https://github.com/schmidt-observatories/wcc-etc.git
 cd wcc-etc && pip install -e . && cd ..
 ```
 
 ## **2. Clone and install wcc-sim**
 ```sh
-git clone git@github.com:schmidt-observatories/wcc-sim.git
+git clone https://github.com/schmidt-observatories/wcc-sim.git
 cd wcc-sim
 pip install -e .
 ```
@@ -125,8 +125,9 @@ cd docs/sphinx
 make html                  # output in _build/html/index.html
 ```
 
-A `.readthedocs.yaml` is included so the site builds automatically once the
-repository is connected to Read the Docs.
+The rendered site is published to GitHub Pages at
+<https://schmidt-observatories.github.io/wcc-sim/> by
+`.github/workflows/deploy-docs.yml` on every push to `main`.
 
 ## Tests
 
@@ -135,10 +136,19 @@ pip install -e ".[test]"
 python -m pytest
 ```
 
-## Acknowledgements
+## Citation and acknowledgements
+If you use wcc-sim, please cite it using the metadata in `CITATION.cff`
+(GitHub renders it as a "Cite this repository" button).
+
 This work has made use of data from the European Space Agency (ESA) mission
 *Gaia* (https://www.cosmos.esa.int/gaia), processed by the Gaia Data
-Processing and Analysis Consortium (DPAC). Simulations are built on
-[Astropy](https://www.astropy.org), [photutils](https://photutils.readthedocs.io),
-[synphot](https://synphot.readthedocs.io) and
-[dust_extinction](https://dust-extinction.readthedocs.io).
+Processing and Analysis Consortium (DPAC); the Gaia tables redistributed in
+`notebooks/gaia_cache/` are subject to the
+[Gaia data credits](https://www.cosmos.esa.int/web/gaia-users/credits).
+Stellar spectra are the Pickles (1998, PASP 110, 863) library; the Gaia
+passbands come from the SVO Filter Profile Service (Rodrigo & Solano 2020,
+http://svo2.cab.inta-csic.es/theory/fps/); reddening uses the Fitzpatrick
+(1999) curve via [dust_extinction](https://dust-extinction.readthedocs.io).
+Simulations are built on [Astropy](https://www.astropy.org),
+[photutils](https://photutils.readthedocs.io) and
+[synphot](https://synphot.readthedocs.io).
