@@ -39,4 +39,6 @@ First public release.
   in-focus PSF wavelength (#20), synthetic BP-RP to template table with
   colour-interpolated rates (#21), input validation and edge cases (#22),
   catalog masks and spherical matching (#10), light-curve guards (#12),
-  defocus PSF centring (#18, with wcc-etc).
+  defocus PSF centring (#18, with wcc-etc), one delivered-frame contract
+  `(ADU - bias) * gain` for objects and files (#11), recorded seed for
+  unseeded runs and a stale-Gaia-cache warning (#24).
