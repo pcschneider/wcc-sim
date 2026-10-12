@@ -17,16 +17,8 @@ series of such frames.
 
 # Installation
 
-## **1. Install wcc-etc**
-
-`wcc_etc` provides the instrument model and is not on PyPI, so install it from
-its repository first:
-```sh
-git clone https://github.com/schmidt-observatories/wcc-etc.git
-cd wcc-etc && pip install -e . && cd ..
-```
-
-## **2. Clone and install wcc-sim**
+[`wcc_etc`](https://pypi.org/project/wcc-etc/) provides the instrument model
+and is pulled in from PyPI as a dependency. From source:
 ```sh
 git clone https://github.com/schmidt-observatories/wcc-sim.git
 cd wcc-sim

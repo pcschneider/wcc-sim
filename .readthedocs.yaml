@@ -19,8 +19,8 @@ sphinx:
 
 # Install the package itself plus its docs extra: autodoc imports wcc_sim, so
 # numpy/astropy/astroquery/synphot/photutils/dust_extinction have to be present.
-# wcc_etc is not on PyPI and is not a declared dependency -- conf.py mocks it
-# when it is missing, which is what happens here.
+# wcc_etc is a declared dependency, so it comes from PyPI too; conf.py mocks
+# it only if the install failed.
 python:
   install:
     - method: pip

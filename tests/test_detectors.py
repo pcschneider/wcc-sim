@@ -59,3 +59,13 @@ def test_unknown_gain_mode_is_rejected():
 
     with pytest.raises(ValueError, match="gain_mode"):
         make_base_simulation("qcmos:bb", gain_mode="medium")
+
+
+def test_require_wcc_etc_rejects_old_version(monkeypatch):
+    import wcc_etc
+    import wcc_sim
+
+    wcc_sim.require_wcc_etc()  # the installed one passes
+    monkeypatch.setattr(wcc_etc, "__version__", "0.0.9")
+    with pytest.raises(ImportError, match="needs wcc_etc >= 0.1.0, found 0.0.9"):
+        wcc_sim.require_wcc_etc()
