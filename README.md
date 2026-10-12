@@ -17,6 +17,10 @@ series of such frames.
 
 # Installation
 
+```sh
+pip install wcc-sim
+```
+
 [`wcc_etc`](https://pypi.org/project/wcc-etc/) provides the instrument model
 and is pulled in from PyPI as a dependency. From source:
 ```sh

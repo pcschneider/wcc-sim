@@ -11,6 +11,13 @@ Requirements
   ``scipy``, ``astropy``, ``astroquery``, ``synphot``, ``photutils``,
   ``dust_extinction`` and ``matplotlib``.
 
+Install from PyPI
+-----------------
+
+.. code-block:: bash
+
+   pip install wcc-sim
+
 Install from source
 -------------------
 
