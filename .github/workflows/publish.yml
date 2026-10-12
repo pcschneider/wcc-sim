@@ -1,10 +1,9 @@
 name: Publish
 
-# Tag a release (`git tag v0.1.0rc1 && git push --tags`) to build the sdist
-# and wheel and upload them to TestPyPI by trusted publishing (no token:
-# the project on test.pypi.org trusts this repository, this workflow file
-# and the `testpypi` environment). Promote to PyPI by adding a second job
-# with environment `pypi` and the default repository URL.
+# Push a `v*` tag to build the sdist and wheel and upload them by trusted
+# publishing (no token: each index trusts this repository, this workflow
+# file and the named environment). Every tag goes to TestPyPI; a final tag
+# (no rc/dev marker, e.g. `v0.1.0`) also goes to PyPI.
 on:
   push:
     tags: ['v*']
@@ -41,3 +40,17 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+
+  pypi:
+    needs: testpypi
+    if: ${{ !contains(github.ref_name, 'rc') && !contains(github.ref_name, 'dev') }}
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

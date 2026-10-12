@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.0rc1 (2026-10-12)
+## 0.1.0 (2026-10-12)
 
-First public release candidate (TestPyPI).
+First public release (PyPI). 0.1.0rc1 went to TestPyPI the same day.
 
 ### Packaging
 - `wcc_etc>=0.1.0` is a declared dependency (it is on PyPI since 0.1.0),
@@ -10,7 +10,8 @@ First public release candidate (TestPyPI).
   `wcc_sim.require_wcc_etc()` turns a missing or too-old wcc_etc into a readable
   ImportError. CI installs wcc-etc from PyPI and a second job builds the wheel
   from the checkout, installs it into an empty venv and runs an offline
-  simulation. Tagged `v*` pushes publish to TestPyPI by trusted publishing.
+  simulation. Tagged `v*` pushes publish to TestPyPI, and final tags to PyPI, by trusted
+  publishing.
 
 ### Simulator (`wcc_sim`)
 - `simulate_field`: Gaia DR3 cone search (cached on disk, astrometry
