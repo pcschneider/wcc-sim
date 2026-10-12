@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from astropy import units as u
 from wcc_etc import Simulation
-from wcc_etc.io import _KIND_NAMES, _SENSORFILTER_FOCUS
+from wcc_etc.io import KIND_NAMES, SENSORFILTER_FOCUS
 from wcc_etc.scene import get_scene
 
 # Full-frame pixel counts (manufacturer values; wcc_etc Sensor only stores area).
@@ -18,10 +18,10 @@ FOCUS_WAVES = {"0wave": 0, "1wave": 1, "2wave": 2}
 
 def _validate_sensorfilter(sensorfilter):
     """Validate that sensorfilter is known. Raises ValueError with valid keys."""
-    if sensorfilter not in _SENSORFILTER_FOCUS:
+    if sensorfilter not in SENSORFILTER_FOCUS:
         raise ValueError(
             f"Unknown sensorfilter {sensorfilter!r}. "
-            f"Valid keys: {sorted(_SENSORFILTER_FOCUS)}"
+            f"Valid keys: {sorted(SENSORFILTER_FOCUS)}"
         )
 
 
@@ -68,7 +68,7 @@ def get_geometry(sensorfilter, sim=None):
     if sim is None:
         sim = make_base_simulation(sensorfilter)
     kind = sensorfilter.split(":", 1)[0]
-    kind = _KIND_NAMES.get(kind, kind)
+    kind = KIND_NAMES.get(kind, kind)
     nx, ny = ARRAY_DIMS[kind]
     plate_mas = (
         sim.sensor.get_plate_scale(sim.telescope).to("arcsec/pix").value * 1000.0
@@ -78,5 +78,5 @@ def get_geometry(sensorfilter, sim=None):
         ny=ny,
         pixel_size_um=float(sim.sensor.pixel_size.value),
         plate_scale_mas=plate_mas,
-        default_focus=FOCUS_WAVES[_SENSORFILTER_FOCUS[sensorfilter]],
+        default_focus=FOCUS_WAVES[SENSORFILTER_FOCUS[sensorfilter]],
     )

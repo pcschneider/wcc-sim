@@ -5,8 +5,8 @@ Requirements
 ------------
 
 - **Python 3.11 or newer.**
-- ``wcc_etc``, the WCC exposure time calculator, installed from its GitHub
-  ``main`` branch. It is not on PyPI yet, so install it first (see below).
+- ``wcc_etc`` 0.1.0 or newer, the WCC exposure time calculator. It is on
+  PyPI and is installed automatically as a dependency.
 - The scientific stack pulled in automatically as dependencies: ``numpy``,
   ``scipy``, ``astropy``, ``astroquery``, ``synphot``, ``photutils``,
   ``dust_extinction`` and ``matplotlib``.
@@ -14,17 +14,11 @@ Requirements
 Install from source
 -------------------
 
-``wcc-sim`` depends on ``wcc_etc`` for the instrument model, so install that
-first, then ``wcc-sim`` itself, both in *editable* mode so local changes to
-``src/`` are picked up immediately:
+Install ``wcc-sim`` in *editable* mode so local changes to ``src/`` are
+picked up immediately; ``wcc_etc`` comes from PyPI with it:
 
 .. code-block:: bash
 
-   # 1. the instrument model
-   git clone https://github.com/schmidt-observatories/wcc-etc.git
-   pip install -e wcc-etc
-
-   # 2. the simulator
    git clone https://github.com/schmidt-observatories/wcc-sim.git
    cd wcc-sim
    pip install -e .

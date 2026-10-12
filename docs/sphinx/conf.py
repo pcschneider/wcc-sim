@@ -63,11 +63,10 @@ autodoc_default_options = {
     "undoc-members": True,
     "show-inheritance": True,
 }
-# wcc_sim imports wcc_etc (not on PyPI), astroquery, and synphot at module
-# scope. A local build in the py313 env has all of them and mocks nothing; on
-# Read the Docs wcc_etc cannot be installed, so autodoc would fail to import
-# every module that touches it. Mock exactly what is missing, so the local
-# build stays fully real and the hosted one still renders the docstrings.
+# wcc_sim imports wcc_etc, astroquery, and synphot at module scope. A full
+# install has all of them and mocks nothing; if one is missing (a partial
+# docs environment) autodoc would fail to import every module that touches
+# it. Mock exactly what is missing so the docstrings still render.
 autodoc_mock_imports = []
 for _optional in ("wcc_etc", "astroquery", "synphot", "photutils",
                   "dust_extinction"):

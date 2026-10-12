@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wcc-sim"
-version = "0.1.0"
+version = "0.1.0rc1"
 description = "End-to-end photometric image simulator for the Lazuli Wide-field Context Camera (WCC)"
 readme = "README.md"
 license = "BSD-3-Clause"
@@ -13,9 +13,8 @@ authors = [
     { name = "Gudmundur Stefansson", email = "gstefansson@schmidtsciences.org" },
 ]
 requires-python = ">=3.11"
-# wcc_etc is also required but is not on PyPI; install it first from
-# https://github.com/schmidt-observatories/wcc-etc (see README).
 dependencies = [
+    "wcc_etc>=0.1.0",      # instrument model; public io names since 0.1.0
     "numpy>=1.24",
     "scipy>=1.10",
     "astropy>=5.3",
