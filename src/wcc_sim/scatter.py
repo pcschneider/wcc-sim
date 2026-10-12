@@ -1,14 +1,13 @@
 """Scattered-light halo as an azimuthally averaged radial profile.
 
 The Lazuli stray-light budget comes from a FRED ray trace of the telescope
-(``26-0212_tele image plane, scatter rays, full area, center_450nm``), which
-wcc_etc ships and combines with a diffraction core in
+at 450 nm, which wcc_etc ships and combines with a diffraction core in
 ``wcc_etc.scatter_psf.make_total_psf``:
 
     total = (1 - f_scat) * core + f_scat * scatter / P_full
 
 ``f_scat`` is the *instrument-wide* scattered fraction -- a property of the
-optics, not of any stamp. FRED quotes it two ways for the 26-0212 run:
+optics, not of any stamp. FRED quotes it two ways:
 ``P_FULL`` = 5.542e-3 per watt *launched at the aperture*, and ``F_FOCAL`` =
 7.13e-3 per watt *reaching the image plane*; they differ by the mirror
 throughput (0.777). A unit-sum PSF describes detected photons, so wcc-sim
@@ -314,7 +313,7 @@ def build_scatter_table(fgd_path=None, n_bins=300):
     f_focal = _fgd_fraction_of_total(path)
     table.meta.update(
         {
-            "SCATFILE": os.path.basename(path),
+            "SCATFILE": "wcc_etc scatter map (450 nm)",
             "P_FULL": p_full,
             "F_FOCAL": f_focal,
             "THRUPUT": (p_full / f_focal) if f_focal else None,
@@ -340,7 +339,7 @@ def _fgd_fraction_of_total(path, max_lines=200):
 
     This is the scattered power divided by the power that reaches the image
     plane, so ``integrated power / fraction of total`` recovers the optical
-    throughput (0.777 for the 26-0212 run -- four reflectors at ~94%).
+    throughput (0.777: four reflectors at ~94%).
     """
     import re
 

@@ -531,7 +531,7 @@ def test_pipeline_scatter_is_on_by_default(canned_catalog):
     assert field.params["scatter"] is True
     assert field.params["scatter_fraction"] == pytest.approx(F_FOCAL_FRED)
     assert field.params["scatter_norm"] == "F_FOCAL"
-    assert "26-0212" in field.params["scatter_file"]
+    assert "wcc_etc scatter map" in field.params["scatter_file"]
 
 
 @pytest.fixture(scope="module")

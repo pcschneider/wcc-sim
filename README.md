@@ -177,10 +177,7 @@ pip install -e ".[test]"
 python -m pytest
 ```
 
-## Citation and acknowledgements
-If you use wcc-sim, please cite it using the metadata in `CITATION.cff`
-(GitHub renders it as a "Cite this repository" button).
-
+## Acknowledgements
 This work has made use of data from the European Space Agency (ESA) mission
 *Gaia* (https://www.cosmos.esa.int/gaia), processed by the Gaia Data
 Processing and Analysis Consortium (DPAC); the Gaia tables redistributed in

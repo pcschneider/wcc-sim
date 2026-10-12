@@ -4,7 +4,7 @@
 # - {name: r_mm, datatype: float64}
 # - {name: frac_per_mm2, datatype: float64}
 # meta: !!omap
-# - {SCATFILE: '26-0212_tele image plane, scatter rays, full area, center_450nm_scatter=all.fgd'}
+# - {SCATFILE: wcc_etc scatter map (450 nm)}
 # - {P_FULL: 0.0055421379681667785}
 # - {F_FOCAL: 0.00713}
 # - {THRUPUT: 0.777298452758314}

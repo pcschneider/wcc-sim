@@ -64,3 +64,6 @@ First public release.
   floor; the tutorials no longer name a personal conda kernel. Tutorial 01 is
   split into a short `01_getting_started` and a `02_verification` that holds
   the assertions; the other tutorials are renumbered 03 to 10.
+- The packaged scatter profile, its module docstring and the `SCATFILE`
+  header card label the halo as the wcc-etc 450 nm scatter map instead of
+  naming the ray-trace run. `CITATION.cff` removed.
