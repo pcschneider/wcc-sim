@@ -1,0 +1,74 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - name: source_id
+#   datatype: int64
+#   description: Unique source identifier (unique within a particular Data Release)
+#   meta: !!omap
+#   - {ucd: meta.id}
+# - name: ra
+#   unit: deg
+#   datatype: float64
+#   description: Right ascension
+#   meta: !!omap
+#   - {ucd: pos.eq.ra;meta.main}
+#   - {utype: 'stc:AstroCoords.Position3D.Value3.C1'}
+# - name: dec
+#   unit: deg
+#   datatype: float64
+#   description: Declination
+#   meta: !!omap
+#   - {ucd: pos.eq.dec;meta.main}
+#   - {utype: 'stc:AstroCoords.Position3D.Value3.C2'}
+# - name: phot_g_mean_mag
+#   unit: mag
+#   datatype: float32
+#   description: G-band mean magnitude
+#   meta: !!omap
+#   - {ucd: phot.mag;em.opt}
+# - name: phot_bp_mean_mag
+#   unit: mag
+#   datatype: float32
+#   description: Integrated BP mean magnitude
+#   meta: !!omap
+#   - {ucd: phot.mag;em.opt.B}
+# - name: phot_rp_mean_mag
+#   unit: mag
+#   datatype: float32
+#   description: Integrated RP mean magnitude
+#   meta: !!omap
+#   - {ucd: phot.mag;em.opt.R}
+# - name: pmra
+#   unit: mas / yr
+#   datatype: float64
+#   description: Proper motion in right ascension direction
+#   meta: !!omap
+#   - {ucd: pos.pm;pos.eq.ra}
+#   - {utype: 'stc:AstroCoords.Velocity3D.Value3.C1'}
+# - name: pmdec
+#   unit: mas / yr
+#   datatype: float64
+#   description: Proper motion in declination direction
+#   meta: !!omap
+#   - {ucd: pos.pm;pos.eq.dec}
+#   - {utype: 'stc:AstroCoords.Velocity3D.Value3.C2'}
+# - name: parallax
+#   unit: mas
+#   datatype: float64
+#   description: Parallax
+#   meta: !!omap
+#   - {ucd: pos.parallax.trig}
+# - name: radial_velocity
+#   unit: km / s
+#   datatype: float32
+#   description: Radial velocity
+#   meta: !!omap
+#   - {ucd: spect.dopplerVeloc.opt;em.opt.I}
+#   - {utype: 'stc:AstroCoords.Velocity3D.Value3.C3'}
+# schema: astropy-2.0
+source_id ra dec phot_g_mean_mag phot_bp_mean_mag phot_rp_mean_mag pmra pmdec parallax radial_velocity
+6110141563309613056 212.04213467546532 -41.39804387593391 11.606008 12.387588 10.714367 -29.696861895575413 -24.041350916734665 8.897475007397833 0.73564726
+6110141563309613184 212.0423142396226 -41.397390056852586 15.505845 15.676639 14.458599 -4.544744857404788 -4.337918519714195 0.04215458927227465 ""
+6110141563309613696 212.04298505792892 -41.39552735489873 18.270578 18.427946 17.05958 -6.653785485725977 -1.5249013449403868 0.9711428084212755 ""
+6110141563306506880 212.0432415357325 -41.395285171323444 18.641739 "" "" -7.532159034135452 -2.81981877227627 0.5362703129134605 ""
+6110141563306500992 212.04086617913663 -41.40007140156438 19.220604 19.652021 18.572025 -8.374473993349342 -3.705738264685703 -0.26998768357163844 ""

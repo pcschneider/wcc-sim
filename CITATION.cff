@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use wcc-sim, please cite it as below."
+title: "wcc-sim: image simulator and differential-photometry pipeline for the Lazuli Wide-field Context Camera"
+type: software
+authors:
+  - family-names: Stefansson
+    given-names: Gudmundur
+    email: gstefansson@schmidtsciences.org
+    affiliation: Schmidt Sciences
+version: 0.1.0
+license: BSD-3-Clause
+repository-code: https://github.com/schmidt-observatories/wcc-sim
+url: https://wcc-sim.readthedocs.io/
+keywords:
+  - astronomy
+  - image simulation
+  - photometry
+  - Lazuli
