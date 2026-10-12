@@ -1,5 +1,6 @@
 """End-to-end WCC field simulation: Gaia -> rates -> PSF -> image -> FITS."""
 
+import secrets
 import warnings
 from dataclasses import dataclass, field
 
@@ -353,6 +354,9 @@ def simulate_field(
             sensorfilter, kernels, wing=wing,
         ) * np.float32(exptime)
 
+    if seed is None:
+        # draw one and record it, so an unseeded run can still be repeated
+        seed = secrets.randbits(32)
     rng = np.random.default_rng(seed)
     out = add_noise_and_digitize(
         image_sources, sim, exptime, n_reads, rng, add_noise=add_noise
@@ -405,6 +409,7 @@ def simulate_field(
         "pixel_size_um": float(geom.pixel_size_um),
         "plate_scale_mas": float(geom.plate_scale_mas),
         "gain": float(sim.sensor.gain.to(u.electron / u.ct).value),
+        "bias": float(sim.sensor.bias_level.to(u.ct).value),
         "gain_mode": gain_mode,
         "saturation_e": float(saturation_level_e(sim.sensor)),
         "read_noise": float(sim.sensor.read_noise.value),

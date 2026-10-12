@@ -215,3 +215,12 @@ def test_m_dwarf_peak_pixel_is_lower_than_a_pivot_render(canned_catalog):
     piv = run(red, sensorfilter="zwo:bb", add_noise=False, wings=False,
               wavelength_nm=eff.params["wavelength_nm"])
     assert eff.image_clean.max() < 0.9 * piv.image_clean.max()
+
+
+def test_unseeded_run_records_a_seed_that_repeats_it(canned_catalog):
+    """seed=None must not mean 'unrepeatable': the drawn seed is recorded."""
+    f1 = run(canned_catalog, seed=None)
+    assert isinstance(f1.params["seed"], int)
+    f2 = run(canned_catalog, seed=f1.params["seed"])
+    np.testing.assert_array_equal(f1.image_adu, f2.image_adu)
+    assert run(canned_catalog, seed=None).params["seed"] != f1.params["seed"]

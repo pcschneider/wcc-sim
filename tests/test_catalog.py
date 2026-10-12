@@ -104,7 +104,8 @@ def test_a_cache_written_before_the_new_columns_is_requeried(monkeypatch, tmp_pa
         return fresh
 
     monkeypatch.setattr(cat, "_run_query", fake)
-    out = cat.query_gaia(10.0, 0.0, 100.0, cache_dir=str(tmp_path))
+    with pytest.warns(UserWarning, match="stale Gaia cache"):
+        out = cat.query_gaia(10.0, 0.0, 100.0, cache_dir=str(tmp_path))
     assert len(calls) == 1
     assert "pmra" in out.colnames
 
