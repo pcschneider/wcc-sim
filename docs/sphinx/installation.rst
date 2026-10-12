@@ -20,11 +20,11 @@ first, then ``wcc-sim`` itself, both in *editable* mode so local changes to
 .. code-block:: bash
 
    # 1. the instrument model
-   git clone git@github.com:schmidt-observatories/wcc-etc.git
+   git clone https://github.com/schmidt-observatories/wcc-etc.git
    pip install -e wcc-etc
 
    # 2. the simulator
-   git clone git@github.com:schmidt-observatories/wcc-sim.git
+   git clone https://github.com/schmidt-observatories/wcc-sim.git
    cd wcc-sim
    pip install -e .
 

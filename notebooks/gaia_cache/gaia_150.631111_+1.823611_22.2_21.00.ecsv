@@ -38,6 +38,33 @@
 #   description: Integrated RP mean magnitude
 #   meta: !!omap
 #   - {ucd: phot.mag;em.opt.R}
+# - name: pmra
+#   unit: mas / yr
+#   datatype: float64
+#   description: Proper motion in right ascension direction
+#   meta: !!omap
+#   - {ucd: pos.pm;pos.eq.ra}
+#   - {utype: 'stc:AstroCoords.Velocity3D.Value3.C1'}
+# - name: pmdec
+#   unit: mas / yr
+#   datatype: float64
+#   description: Proper motion in declination direction
+#   meta: !!omap
+#   - {ucd: pos.pm;pos.eq.dec}
+#   - {utype: 'stc:AstroCoords.Velocity3D.Value3.C2'}
+# - name: parallax
+#   unit: mas
+#   datatype: float64
+#   description: Parallax
+#   meta: !!omap
+#   - {ucd: pos.parallax.trig}
+# - name: radial_velocity
+#   unit: km / s
+#   datatype: float32
+#   description: Radial velocity
+#   meta: !!omap
+#   - {ucd: spect.dopplerVeloc.opt;em.opt.I}
+#   - {utype: 'stc:AstroCoords.Velocity3D.Value3.C3'}
 # schema: astropy-2.0
-source_id ra dec phot_g_mean_mag phot_bp_mean_mag phot_rp_mean_mag
-3836000669773723520 150.63121507294554 1.8236069205066536 8.139753 8.260616 7.900744
+source_id ra dec phot_g_mean_mag phot_bp_mean_mag phot_rp_mean_mag pmra pmdec parallax radial_velocity
+3836000669773723520 150.63121507294554 1.8236069205066536 8.139753 8.260616 7.900744 6.47724092328538 -0.982023655502846 6.965820826785093 -15.551069

@@ -28,7 +28,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/schmidt-observatories/wcc-sim"
-Documentation = "https://wcc-sim.readthedocs.io"
+Documentation = "https://wcc-sim.readthedocs.io/"
 Issues = "https://github.com/schmidt-observatories/wcc-sim/issues"
 
 [project.scripts]
@@ -53,6 +53,12 @@ wcc_sim = ["data/*", "data/psfs/*.ecsv"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `pytest -m "not slow"` skips the Monte Carlo cross-check (~30 s); nothing
+# in the suite needs the network, `network` is reserved for tests that will.
+markers = [
+    "slow: takes more than ~10 s (Monte Carlo cross-checks)",
+    "network: needs the Gaia archive or VizieR",
+]
 
 [tool.ruff.lint]
 # Pin the rule set so local runs and CI agree whatever ruff defaults do:

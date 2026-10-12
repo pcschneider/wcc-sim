@@ -90,7 +90,7 @@ def query_gaia(ra_deg, dec_deg, radius_arcsec, mag_limit=21.0, cache_dir=None):
         os.makedirs(cache_dir, exist_ok=True)
         candidates = _cache_paths(cache_dir, ra_deg, dec_deg, radius_arcsec, mag_limit)
         cache_file = candidates[0]
-        for path in candidates:
+        for path in dict.fromkeys(candidates):   # rounded and legacy keys can coincide
             if os.path.exists(path):
                 cached = Table.read(path, format="ascii.ecsv")
                 if set(COLUMNS).issubset(cached.colnames):
@@ -100,6 +100,12 @@ def query_gaia(ra_deg, dec_deg, radius_arcsec, mag_limit=21.0, cache_dir=None):
                 # brightcat.query_bright carries the same guard for the XHIP
                 # cache; the two are deliberately duplicated (different
                 # signatures and cache keys) and must stay in step.
+                warnings.warn(
+                    f"ignoring stale Gaia cache {path} (missing "
+                    f"{sorted(set(COLUMNS) - set(cached.colnames))}): "
+                    "re-querying the archive",
+                    UserWarning,
+                )
 
     result = _run_query(build_adql(ra_deg, dec_deg, radius_arcsec, mag_limit))
     complete = True

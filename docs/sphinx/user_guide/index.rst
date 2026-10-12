@@ -12,6 +12,7 @@ which gives the exact signatures and docstrings.
    catalog
    fluxes
    psf
+   scatter
    noise
    output
 

@@ -224,3 +224,12 @@ def test_scatter_normalisation_is_recorded(canned_catalog):
     g = run(canned_catalog, scatter_fraction=5.0e-3)
     assert g.params["scatter_norm"] == "USER"
     assert g.params["scatter_fraction"] == pytest.approx(5.0e-3)
+
+
+def test_unseeded_run_records_a_seed_that_repeats_it(canned_catalog):
+    """seed=None must not mean 'unrepeatable': the drawn seed is recorded."""
+    f1 = run(canned_catalog, seed=None)
+    assert isinstance(f1.params["seed"], int)
+    f2 = run(canned_catalog, seed=f1.params["seed"])
+    np.testing.assert_array_equal(f1.image_adu, f2.image_adu)
+    assert run(canned_catalog, seed=None).params["seed"] != f1.params["seed"]

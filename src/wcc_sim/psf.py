@@ -41,12 +41,12 @@ def centroid_offset(psf):
 def recenter_on_centroid(psf):
     """Shift `psf` so its flux centroid sits on the grid centre; renormalize.
 
-    The Zemax Huygens defocus images put the chief ray at sample (129, 129)
-    1-based and are written top row first, so after loading their centroid
-    sits ~(+0.5, -0.7) detector px from the stamp centre wcc_sim assumes.
-    Rendered as-is, every defocused star lands ~15 mas from its catalog
-    position -- a WCS zero-point error. Recentring on the centroid makes
-    the catalog position the quantity a centroider recovers (issue #18).
+    wcc_etc renders the Zemax Huygens defocus images about the chief ray
+    (its fix for issue #18). The flux centroid of a defocused PSF still sits
+    a little off the chief ray because the ring is asymmetric: +0.10 px for
+    1 wave and +0.19 px for 2 waves along +Y on zwo. A centroider recovers
+    the centroid, not the chief ray, so recentring on it makes the catalog
+    position the quantity a centroider recovers (issue #18).
     """
     dx, dy = centroid_offset(psf)
     out = _nd_shift(psf, (-dy, -dx), order=1, mode="constant", cval=0.0)
