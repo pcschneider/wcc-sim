@@ -21,7 +21,7 @@ _CARDS = {
     "n_reads": ("NREADS", "coadded frames (ETC semantics)"),
     "jitter_sigma_mas": ("JITTER", "[mas] jitter Gaussian sigma"),
     "mag_limit": ("MAGLIM", "Gaia G faint limit of injected sources"),
-    "seed": ("SEED", "RNG seed (empty if None)"),
+    "seed": ("SEED", "RNG seed (drawn at random if not given)"),
     "gaia_radius_arcsec": ("GAIARAD", "[arcsec] Gaia query radius"),
     "n_sources": ("NSRC", "number of injected sources"),
     "plate_scale_mas": ("PLTSCL", "[mas/pix] plate scale"),
