@@ -162,9 +162,8 @@ cd docs/sphinx
 make html                  # output in _build/html/index.html
 ```
 
-The rendered site is published to GitHub Pages at
-<https://schmidt-observatories.github.io/wcc-sim/> by
-`.github/workflows/deploy-docs.yml` on every push to `main`.
+The rendered site is published on Read the Docs at
+<https://wcc-sim.readthedocs.io/>; `.readthedocs.yaml` configures the build.
 
 ## Tests
 

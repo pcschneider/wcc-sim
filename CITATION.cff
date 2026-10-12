@@ -10,7 +10,7 @@ authors:
 version: 0.1.0
 license: BSD-3-Clause
 repository-code: https://github.com/schmidt-observatories/wcc-sim
-url: https://schmidt-observatories.github.io/wcc-sim/
+url: https://wcc-sim.readthedocs.io/
 keywords:
   - astronomy
   - image simulation
