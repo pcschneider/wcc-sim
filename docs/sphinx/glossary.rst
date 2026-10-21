@@ -7,6 +7,20 @@ to the page that goes into detail.
 .. glossary::
    :sorted:
 
+   AB magnitude
+      A magnitude on the AB system, defined so that a source with constant
+      flux density F_nu of 3631 Jy has magnitude zero in every band. An
+      AB-flat spectrum therefore has the same AB magnitude in any bandpass,
+      which is why :class:`~wcc_sim.extended.ImageComponent` needs only one
+      zero point per image. Gaia magnitudes are on the Vega system instead;
+      see :doc:`user_guide/galaxies`.
+
+   extended source
+      Anything that is not a point: galaxy light, nebulosity, a reprojected
+      image. Rendered on the native pixel grid and convolved with the PSF by
+      FFT rather than placed as oversampled stamps; see
+      :doc:`user_guide/galaxies`.
+
    ADU
       Analog-to-digital unit, the integer a camera reports for each pixel. It
       is the electron count divided by the :term:`gain`, plus the bias level,

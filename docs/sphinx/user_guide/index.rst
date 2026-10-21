@@ -13,6 +13,7 @@ which gives the exact signatures and docstrings.
    fluxes
    psf
    scatter
+   galaxies
    noise
    output
    plotting
