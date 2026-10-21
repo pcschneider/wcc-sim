@@ -5,7 +5,14 @@
 - `wcc_sim.GalSimComponent`: an extended source described by any
   `galsim.GSObject` (bulge+disk sums, shears, RealGalaxy), normalized by
   `total_mag`/`template`/`ebv` like `SersicComponent` and rendered through the
-  same PSF convolution. galsim is an optional extra (`wcc-sim[galsim]`).
+  same PSF convolution.
+- `wcc_sim.ImageComponent`: a calibrated sky image with a WCS (HST drizzled
+  mosaics in e-/s with an AB zero point) reprojected onto the frame with
+  `reproject`, surface brightness conserved, each pixel treated as an
+  AB-flat source (`starflux.rate_for_ab`). `wcc_sim.phangs` lists, downloads
+  (once, into `~/.cache/wcc_sim/phangs`) and loads PHANGS-HST mosaics as
+  ImageComponents, mapping WCC g/r/i to F435W-or-F438W/F555W/F814W.
+- galsim and reproject are an optional extra: `pip install wcc-sim[galaxies]`.
 
 ## 0.1.0 (2026-10-12)
 

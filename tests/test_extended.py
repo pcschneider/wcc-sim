@@ -245,3 +245,43 @@ def test_galsim_component_matches_sersic():
         GalSimComponent(ra=RA0, dec=DEC0, profile=1.0, total_mag=15.0)
     far = GalSimComponent(ra=RA0 + 1.0, dec=DEC0, profile=prof, total_mag=15.0)
     assert render_component_profile(far, _wcs(), SHAPE, PLATE_MAS, "zwo:r") is None
+
+
+def test_rate_for_ab_scales():
+    from wcc_sim.starflux import rate_for_ab
+
+    r20 = rate_for_ab(20.0, "zwo:r")
+    assert r20 > 0
+    assert rate_for_ab(22.5, "zwo:r") == pytest.approx(r20 * 10 ** (-1.0), rel=1e-9)
+
+
+def test_image_component_conserves_flux():
+    """A flat patch of known AB surface brightness on a coarser WCS lands in
+    the frame with the right total e-/s, whatever the pixel-area ratio."""
+    pytest.importorskip("reproject")
+    from astropy.wcs import WCS
+
+    from wcc_sim.extended import ImageComponent, render_component_profile
+    from wcc_sim.starflux import rate_for_ab
+
+    # input: 0.04"/px like HST, 200x200 px, centred on the frame centre
+    w = WCS(naxis=2)
+    w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+    w.wcs.crval = [RA0, DEC0]
+    w.wcs.crpix = [100.5, 100.5]
+    w.wcs.cdelt = [-0.04 / 3600, 0.04 / 3600]
+    data = np.zeros((200, 200), dtype=np.float32)
+    data[80:120, 80:120] = 2.0   # 40x40 input px = 1.6" square
+    data[:5, :5] = np.nan         # footprint hole, must render as 0
+    zp = 25.0
+    comp = ImageComponent(data=data, wcs=w, zp_ab=zp)
+    img = render_component_profile(comp, _wcs(), SHAPE, PLATE_MAS, "zwo:r")
+    expected = 2.0 * 40 * 40 * rate_for_ab(zp, "zwo:r")
+    assert img.sum() == pytest.approx(expected, rel=0.02)
+    assert img.min() >= 0.0
+
+    far = WCS(w.to_header())
+    far.wcs.crval = [RA0 + 1.0, DEC0]
+    assert render_component_profile(
+        ImageComponent(data=data, wcs=far, zp_ab=zp), _wcs(), SHAPE, PLATE_MAS, "zwo:r"
+    ) is None

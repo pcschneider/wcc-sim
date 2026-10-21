@@ -1,6 +1,7 @@
-"""Extended-source components for wcc-sim frames: analytic Sersic profiles
-and arbitrary GalSim profiles (GalSimComponent, needs the optional `galsim`
-extra).
+"""Extended-source components for wcc-sim frames: analytic Sersic profiles,
+arbitrary GalSim profiles (GalSimComponent) and calibrated sky images with a
+WCS such as HST mosaics (ImageComponent). The last two need the optional
+`galaxies` extra (galsim, reproject).
 
 Components are rendered in e-/s/pix on the NATIVE detector grid and
 convolved once per (template, ebv) group with an effective-PSF kernel
@@ -15,12 +16,13 @@ memory for a full frame; sampling profiles as dense point grids would need
 from dataclasses import dataclass
 
 import numpy as np
+from astropy import units as u
 from astropy.modeling.models import Sersic2D
 from scipy.signal import fftconvolve
 from scipy.special import gamma, gammaincinv
 
 from .chromatic import attenuation_factor
-from .starflux import REF_MAG, rate_for_spt
+from .starflux import REF_MAG, rate_for_ab, rate_for_spt
 
 _REFINE = 9         # subgrid factor for the central cusp
 _REFINE_HALF_MIN = 8   # px; refinement box half-width bounds
@@ -88,6 +90,34 @@ class GalSimComponent:
     def __post_init__(self):
         if not hasattr(self.profile, "drawImage"):
             raise TypeError("profile must be a galsim.GSObject")
+        if self.ebv < 0.0:
+            raise ValueError(f"ebv must be >= 0, got {self.ebv}")
+
+
+@dataclass(frozen=True)
+class ImageComponent:
+    """A calibrated sky image (e.g. an HST drizzled mosaic) as an extended
+    source, reprojected onto the frame.
+
+    `data` is a 2-D array with WCS `wcs`; a pixel of value v has AB
+    magnitude `zp_ab - 2.5 log10(v)`, so for an HST product in e-/s
+    `zp_ab = -2.5 log10(PHOTFLAM) - 5 log10(PHOTPLAM) - 2.408` (see
+    wcc_sim.phangs.ab_zeropoint). Each pixel is treated as an AB-flat
+    source, i.e. the image's own band is taken to be the WCC band it is
+    simulated in. `template`/`ebv` only pick the PSF kernel in chromatic
+    mode. NaNs (outside the mosaic footprint) and negative pixels render as
+    zero.
+    """
+
+    data: object
+    wcs: object
+    zp_ab: float
+    template: str = "G2V"
+    ebv: float = 0.0
+
+    def __post_init__(self):
+        if np.ndim(self.data) != 2:
+            raise ValueError("data must be a 2-D array")
         if self.ebv < 0.0:
             raise ValueError(f"ebv must be >= 0, got {self.ebv}")
 
@@ -170,11 +200,44 @@ def render_galsim_profile(comp, wcs, shape, plate_scale_mas, sensorfilter):
     return img
 
 
+def render_image_profile(comp, wcs, shape, plate_scale_mas, sensorfilter):
+    """ImageComponent surface brightness in e-/s/pix on the native grid
+    (unconvolved); None if the frame misses the image.
+
+    The input is first cut to the frame's footprint (so a 12000^2 HST
+    mosaic is not interpolated whole), bilinearly reprojected onto the frame
+    WCS with `reproject`, and scaled by the pixel-area ratio so surface
+    brightness is conserved. No pixel-response convolution is applied here:
+    as for the other components it enters once through the PSF kernel.
+    """
+    from astropy.coordinates import SkyCoord
+    from astropy.nddata import Cutout2D, NoOverlapError
+    from astropy.wcs.utils import proj_plane_pixel_area
+    from reproject import reproject_interp
+
+    ny, nx = shape
+    pix_out_arcsec2 = (plate_scale_mas / 1000.0) ** 2
+    pix_in_arcsec2 = proj_plane_pixel_area(comp.wcs) * 3600.0**2
+    diag = np.hypot(nx, ny) * plate_scale_mas / 1000.0 * 1.05 * u.arcsec
+    center = SkyCoord(*wcs.wcs.crval, unit="deg")
+    try:
+        cut = Cutout2D(comp.data, center, diag, wcs=comp.wcs, mode="partial",
+                       fill_value=np.nan)
+    except NoOverlapError:
+        return None
+    img, _ = reproject_interp((cut.data, cut.wcs), wcs, shape_out=shape)
+    img = np.nan_to_num(img, nan=0.0, posinf=0.0, neginf=0.0)
+    np.clip(img, 0.0, None, out=img)
+    img *= rate_for_ab(comp.zp_ab, sensorfilter) * pix_out_arcsec2 / pix_in_arcsec2
+    return img.astype(np.float32)
+
+
 def render_component_profile(comp, wcs, shape, plate_scale_mas, sensorfilter):
     """Component surface brightness in e-/s/pix on the native grid
     (unconvolved); None if the 99.9%-flux footprint misses the frame.
 
-    GalSimComponents are drawn by render_galsim_profile. For Sersic
+    GalSimComponents are drawn by render_galsim_profile and ImageComponents
+    by render_image_profile. For Sersic
     components the profile is evaluated at pixel centers in row chunks (full-frame
     float64 temporaries would be ~GB); a box around the center is
     re-evaluated on a _REFINE x subgrid and averaged, since a Sersic cusp
@@ -182,6 +245,8 @@ def render_component_profile(comp, wcs, shape, plate_scale_mas, sensorfilter):
     """
     if isinstance(comp, GalSimComponent):
         return render_galsim_profile(comp, wcs, shape, plate_scale_mas, sensorfilter)
+    if isinstance(comp, ImageComponent):
+        return render_image_profile(comp, wcs, shape, plate_scale_mas, sensorfilter)
     ny, nx = shape
     x0, y0 = (float(v) for v in wcs.world_to_pixel_values(comp.ra, comp.dec))
     r_eff_pix = comp.r_eff_arcsec * 1000.0 / plate_scale_mas

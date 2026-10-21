@@ -36,7 +36,7 @@ wcc-phot = "wcc_phot.cli:main"
 
 [project.optional-dependencies]
 test = ["pytest", "ruff"]
-galsim = ["galsim>=2.5"]   # GalSimComponent extended sources
+galaxies = ["galsim>=2.5", "reproject>=0.10"]   # GalSimComponent / ImageComponent
 docs = [
     "sphinx",
     "sphinx-rtd-theme",
