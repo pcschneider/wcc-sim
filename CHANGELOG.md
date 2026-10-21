@@ -13,6 +13,8 @@
   (once, into `~/.cache/wcc_sim/phangs`) and loads PHANGS-HST mosaics as
   ImageComponents, mapping WCC g/r/i to F435W-or-F438W/F555W/F814W.
 - galsim and reproject are an optional extra: `pip install wcc-sim[galaxies]`.
+- Tutorial notebook `11_galaxies_phangs`: full-frame g/r/i WCC images of
+  NGC 1300 and NGC 4321 from PHANGS-HST and a colour composite.
 
 ## 0.1.0 (2026-10-12)
 

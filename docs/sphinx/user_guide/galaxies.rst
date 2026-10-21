@@ -246,6 +246,8 @@ Each full frame takes 30 to 50 s on a laptop and the FITS product is about
 550 MB. NGC 1300 and NGC 4321 both fill the 2.7' x 1.8' frame; in 600 s a
 21 mag/arcsec² disk gives only about 8 e- per WCC pixel, so bin the display
 or stack for a pretty picture.
+The tutorial notebook :doc:`../notebooks/11_galaxies_phangs` runs this for
+NGC 1300 and NGC 4321 with the frames and composites shown.
 
 Caveats to read the frames with
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
