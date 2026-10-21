@@ -1,4 +1,6 @@
-"""Analytic extended-source (Sersic) components for wcc-sim frames.
+"""Extended-source components for wcc-sim frames: analytic Sersic profiles
+and arbitrary GalSim profiles (GalSimComponent, needs the optional `galsim`
+extra).
 
 Components are rendered in e-/s/pix on the NATIVE detector grid and
 convolved once per (template, ebv) group with an effective-PSF kernel
@@ -64,6 +66,39 @@ class SersicComponent:
             raise ValueError(f"ebv must be >= 0, got {self.ebv}")
 
 
+@dataclass(frozen=True)
+class GalSimComponent:
+    """One extended component described by a galsim GSObject.
+
+    `profile` is any galsim.GSObject in arcsec (e.g. galsim.Sersic,
+    galsim.Add of a bulge and disk, a sheared/rotated profile, or a
+    RealGalaxy). Its own flux is ignored: `total_mag` (integrated Gaia-G
+    vegamag, same convention as point sources and SersicComponent) sets the
+    flux through the `template` spectrum and `ebv` reddening. galsim's
+    position-angle convention (CCW from +x) matches SersicComponent.
+    """
+
+    ra: float
+    dec: float
+    profile: object
+    total_mag: float
+    template: str = "G2V"
+    ebv: float = 0.0
+
+    def __post_init__(self):
+        if not hasattr(self.profile, "drawImage"):
+            raise TypeError("profile must be a galsim.GSObject")
+        if self.ebv < 0.0:
+            raise ValueError(f"ebv must be >= 0, got {self.ebv}")
+
+
+def component_total_rate(comp, sensorfilter):
+    """Integrated e-/s of a component with `total_mag` set (reddened)."""
+    att = attenuation_factor(comp.template, comp.ebv, sensorfilter)
+    rate_ref = rate_for_spt(comp.template, sensorfilter)
+    return rate_ref * 10.0 ** (-0.4 * (comp.total_mag - REF_MAG)) * att
+
+
 def sersic_total_over_amplitude(n, r_eff_pix, ellip):
     """F_total / amplitude for a Sersic2D profile (analytic).
 
@@ -80,15 +115,15 @@ def sersic_total_over_amplitude(n, r_eff_pix, ellip):
 
 def component_amplitude(comp, sensorfilter, plate_scale_mas):
     """Sersic2D amplitude in e-/s/pix for the (reddened) component."""
-    att = attenuation_factor(comp.template, comp.ebv, sensorfilter)
-    rate_ref = rate_for_spt(comp.template, sensorfilter)
     pix_arcsec = plate_scale_mas / 1000.0
     if comp.total_mag is not None:
-        total = rate_ref * 10.0 ** (-0.4 * (comp.total_mag - REF_MAG)) * att
+        total = component_total_rate(comp, sensorfilter)
         r_eff_pix = comp.r_eff_arcsec / pix_arcsec
         return total / sersic_total_over_amplitude(
             comp.n, r_eff_pix, comp.ellip
         )
+    att = attenuation_factor(comp.template, comp.ebv, sensorfilter)
+    rate_ref = rate_for_spt(comp.template, sensorfilter)
     sb_rate = rate_ref * 10.0 ** (-0.4 * (comp.sb_mag_arcsec2 - REF_MAG)) * att
     return sb_rate * pix_arcsec**2
 
@@ -99,15 +134,54 @@ def _r999_pix(n, r_eff_pix):
     return r_eff_pix * (float(gammaincinv(2.0 * n, 0.999)) / bn) ** n
 
 
+def render_galsim_profile(comp, wcs, shape, plate_scale_mas, sensorfilter):
+    """GalSimComponent surface brightness in e-/s/pix on the native grid
+    (unconvolved); None if its stamp misses the frame.
+
+    The profile is drawn with galsim (`method="no_pixel"`: surface
+    brightness sampled at pixel centers times pixel area, the same
+    sampling as the Sersic path, so the pixel response enters once through
+    the PSF kernel in render_extended) on an odd square stamp sized by
+    galsim.GSObject.getGoodImageSize, then pasted at the sub-pixel center.
+    """
+    ny, nx = shape
+    x0, y0 = (float(v) for v in wcs.world_to_pixel_values(comp.ra, comp.dec))
+    pix_arcsec = plate_scale_mas / 1000.0
+    prof = comp.profile.withFlux(component_total_rate(comp, sensorfilter))
+    # ponytail: stamp capped at ~2x the frame; a galaxy centered far outside
+    # a frame it still covers would be truncated. Draw on the full frame then.
+    n = min(int(prof.getGoodImageSize(pix_arcsec)), 2 * max(ny, nx) + 1)
+    n += 1 - n % 2
+    ix0, iy0 = int(np.floor(x0 + 0.5)), int(np.floor(y0 + 0.5))
+    half = n // 2
+    if (ix0 + half < 0 or ix0 - half > nx - 1
+            or iy0 + half < 0 or iy0 - half > ny - 1):
+        return None
+    stamp = prof.drawImage(
+        nx=n, ny=n, scale=pix_arcsec, method="no_pixel",
+        offset=(x0 - ix0, y0 - iy0),
+    ).array
+    img = np.zeros(shape, dtype=np.float32)
+    sx_lo, sy_lo = max(0, half - ix0), max(0, half - iy0)
+    fx_lo, fy_lo = max(0, ix0 - half), max(0, iy0 - half)
+    w = min(n - sx_lo, nx - fx_lo)
+    h = min(n - sy_lo, ny - fy_lo)
+    img[fy_lo:fy_lo + h, fx_lo:fx_lo + w] = stamp[sy_lo:sy_lo + h, sx_lo:sx_lo + w]
+    return img
+
+
 def render_component_profile(comp, wcs, shape, plate_scale_mas, sensorfilter):
     """Component surface brightness in e-/s/pix on the native grid
     (unconvolved); None if the 99.9%-flux footprint misses the frame.
 
-    The profile is evaluated at pixel centers in row chunks (full-frame
+    GalSimComponents are drawn by render_galsim_profile. For Sersic
+    components the profile is evaluated at pixel centers in row chunks (full-frame
     float64 temporaries would be ~GB); a box around the center is
     re-evaluated on a _REFINE x subgrid and averaged, since a Sersic cusp
     changes across a pixel while the rest of the profile does not.
     """
+    if isinstance(comp, GalSimComponent):
+        return render_galsim_profile(comp, wcs, shape, plate_scale_mas, sensorfilter)
     ny, nx = shape
     x0, y0 = (float(v) for v in wcs.world_to_pixel_values(comp.ra, comp.dec))
     r_eff_pix = comp.r_eff_arcsec * 1000.0 / plate_scale_mas

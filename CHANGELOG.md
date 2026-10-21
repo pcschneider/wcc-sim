@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `wcc_sim.GalSimComponent`: an extended source described by any
+  `galsim.GSObject` (bulge+disk sums, shears, RealGalaxy), normalized by
+  `total_mag`/`template`/`ebv` like `SersicComponent` and rendered through the
+  same PSF convolution. galsim is an optional extra (`wcc-sim[galsim]`).
+
 ## 0.1.0 (2026-10-12)
 
 First public release (PyPI). 0.1.0rc1 went to TestPyPI the same day.

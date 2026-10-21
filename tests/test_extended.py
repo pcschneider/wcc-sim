@@ -216,3 +216,32 @@ def test_render_extended_all_off_frame():
     img = render_extended([comp], _wcs(), SHAPE, PLATE_MAS, "zwo:r",
                           {(comp.template, comp.ebv): _mono_kernel()})
     assert img.sum() == 0.0
+
+
+def test_galsim_component_matches_sersic():
+    """galsim.Sersic through GalSimComponent reproduces the analytic
+    SersicComponent: same total flux and same off-cusp pixel values."""
+    galsim = pytest.importorskip("galsim")
+    from wcc_sim.extended import GalSimComponent, render_component_profile
+
+    r_eff = 0.1  # arcsec, ~6 px
+    ana = _comp(n=1.0, r_eff_arcsec=r_eff, ellip=0.3, pa_deg=40.0, total_mag=15.0)
+    # astropy ellip keeps the major axis at r_eff and shrinks the minor one;
+    # galsim's area-preserving shear() would not, so compress y instead.
+    prof = (
+        galsim.Sersic(n=1.0, half_light_radius=r_eff)
+        .transform(1.0, 0.0, 0.0, 0.7)
+        .rotate(40.0 * galsim.degrees)
+    )
+    gs = GalSimComponent(ra=RA0, dec=DEC0, profile=prof, total_mag=15.0)
+    a = render_component_profile(ana, _wcs(), SHAPE, PLATE_MAS, "zwo:r")
+    g = render_component_profile(gs, _wcs(), SHAPE, PLATE_MAS, "zwo:r")
+    assert g.sum() == pytest.approx(a.sum(), rel=0.02)
+    off = a > 0.01 * a.max()  # away from the refined cusp pixels
+    off &= a < 0.5 * a.max()
+    assert np.allclose(g[off], a[off], rtol=0.03)
+
+    with pytest.raises(TypeError):
+        GalSimComponent(ra=RA0, dec=DEC0, profile=1.0, total_mag=15.0)
+    far = GalSimComponent(ra=RA0 + 1.0, dec=DEC0, profile=prof, total_mag=15.0)
+    assert render_component_profile(far, _wcs(), SHAPE, PLATE_MAS, "zwo:r") is None

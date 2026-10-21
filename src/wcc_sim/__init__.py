@@ -25,5 +25,5 @@ def require_wcc_etc(minimum=WCC_ETC_MINIMUM):
 
 require_wcc_etc()
 
-from .extended import SersicComponent  # noqa: E402,F401
+from .extended import GalSimComponent, SersicComponent  # noqa: E402,F401
 from .pipeline import SimulatedField, simulate_field  # noqa: E402,F401
