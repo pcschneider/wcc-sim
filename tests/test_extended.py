@@ -247,6 +247,33 @@ def test_galsim_component_matches_sersic():
     assert render_component_profile(far, _wcs(), SHAPE, PLATE_MAS, "zwo:r") is None
 
 
+def test_galsim_cusp_keeps_flux():
+    """A compact n=4 profile (r_eff = 1 px) through GalSimComponent keeps
+    its flux: without the subgrid cusp refinement the pixel-center sampling
+    lost ~20% of it."""
+    galsim = pytest.importorskip("galsim")
+    from wcc_sim.extended import (
+        GalSimComponent, component_total_rate, render_component_profile,
+    )
+
+    r_eff = PLATE_MAS / 1000.0  # one pixel
+    ana = _comp(n=4.0, r_eff_arcsec=r_eff, total_mag=15.0)
+    gs = GalSimComponent(ra=RA0, dec=DEC0, total_mag=15.0,
+                         profile=galsim.Sersic(n=4.0, half_light_radius=r_eff))
+    a = render_component_profile(ana, _wcs(), SHAPE, PLATE_MAS, "zwo:r")
+    g = render_component_profile(gs, _wcs(), SHAPE, PLATE_MAS, "zwo:r")
+    total = component_total_rate(gs, "zwo:r")
+    assert g.sum() == pytest.approx(total, rel=0.02)
+    assert g.sum() == pytest.approx(a.sum(), rel=0.02)
+    assert g.max() == pytest.approx(a.max(), rel=0.02)
+
+    # a profile wider than the frame draws only the frame intersection
+    big = GalSimComponent(ra=RA0, dec=DEC0, total_mag=10.0,
+                          profile=galsim.Sersic(n=4.0, half_light_radius=10.0))
+    img = render_component_profile(big, _wcs(), SHAPE, PLATE_MAS, "zwo:r")
+    assert img.shape == SHAPE and img.dtype == np.float32 and img.max() > 0
+
+
 def test_rate_for_ab_scales():
     from wcc_sim.starflux import rate_for_ab
 
@@ -285,3 +312,11 @@ def test_image_component_conserves_flux():
     assert render_component_profile(
         ImageComponent(data=data, wcs=far, zp_ab=zp), _wcs(), SHAPE, PLATE_MAS, "zwo:r"
     ) is None
+
+
+def test_image_component_rejects_integer_data():
+    from astropy.wcs import WCS
+    from wcc_sim.extended import ImageComponent
+
+    with pytest.raises(ValueError, match="float"):
+        ImageComponent(data=np.zeros((4, 4), dtype=np.int32), wcs=WCS(naxis=2), zp_ab=25.0)

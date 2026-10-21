@@ -68,7 +68,7 @@ class SersicComponent:
             raise ValueError(f"ebv must be >= 0, got {self.ebv}")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class GalSimComponent:
     """One extended component described by a galsim GSObject.
 
@@ -78,6 +78,8 @@ class GalSimComponent:
     vegamag, same convention as point sources and SersicComponent) sets the
     flux through the `template` spectrum and `ebv` reddening. galsim's
     position-angle convention (CCW from +x) matches SersicComponent.
+    Profiles smaller than a pixel belong in the point-source catalog, not
+    here: the renderer samples surface brightness, it does not integrate it.
     """
 
     ra: float
@@ -94,7 +96,7 @@ class GalSimComponent:
             raise ValueError(f"ebv must be >= 0, got {self.ebv}")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class ImageComponent:
     """A calibrated sky image (e.g. an HST drizzled mosaic) as an extended
     source, reprojected onto the frame.
@@ -118,6 +120,8 @@ class ImageComponent:
     def __post_init__(self):
         if np.ndim(self.data) != 2:
             raise ValueError("data must be a 2-D array")
+        if not np.issubdtype(np.asarray(self.data).dtype, np.floating):
+            raise ValueError("data must be a float array (NaN marks no data)")
         if self.ebv < 0.0:
             raise ValueError(f"ebv must be >= 0, got {self.ebv}")
 
@@ -166,37 +170,47 @@ def _r999_pix(n, r_eff_pix):
 
 def render_galsim_profile(comp, wcs, shape, plate_scale_mas, sensorfilter):
     """GalSimComponent surface brightness in e-/s/pix on the native grid
-    (unconvolved); None if its stamp misses the frame.
+    (unconvolved); None if its footprint misses the frame.
 
     The profile is drawn with galsim (`method="no_pixel"`: surface
-    brightness sampled at pixel centers times pixel area, the same
-    sampling as the Sersic path, so the pixel response enters once through
-    the PSF kernel in render_extended) on an odd square stamp sized by
-    galsim.GSObject.getGoodImageSize, then pasted at the sub-pixel center.
+    brightness sampled at pixel centers times pixel area, so the pixel
+    response enters once through the PSF kernel in render_extended)
+    directly onto the part of the frame inside its getGoodImageSize box, so
+    a profile larger than the frame never allocates more than the frame.
+    The central cusp box is re-drawn on a _REFINE x subgrid and summed, as
+    the Sersic path does, so compact or high-n profiles keep their flux.
     """
+    import galsim
+
+    if not isinstance(comp.profile, galsim.GSObject):
+        raise TypeError("profile must be a galsim.GSObject")
     ny, nx = shape
     x0, y0 = (float(v) for v in wcs.world_to_pixel_values(comp.ra, comp.dec))
     pix_arcsec = plate_scale_mas / 1000.0
     prof = comp.profile.withFlux(component_total_rate(comp, sensorfilter))
-    # ponytail: stamp capped at ~2x the frame; a galaxy centered far outside
-    # a frame it still covers would be truncated. Draw on the full frame then.
-    n = min(int(prof.getGoodImageSize(pix_arcsec)), 2 * max(ny, nx) + 1)
-    n += 1 - n % 2
+    half = int(prof.getGoodImageSize(pix_arcsec)) // 2 + 1
     ix0, iy0 = int(np.floor(x0 + 0.5)), int(np.floor(y0 + 0.5))
-    half = n // 2
-    if (ix0 + half < 0 or ix0 - half > nx - 1
-            or iy0 + half < 0 or iy0 - half > ny - 1):
+    b = galsim.BoundsI(max(0, ix0 - half), min(nx - 1, ix0 + half),
+                       max(0, iy0 - half), min(ny - 1, iy0 + half))
+    if not b.isDefined():
         return None
-    stamp = prof.drawImage(
-        nx=n, ny=n, scale=pix_arcsec, method="no_pixel",
-        offset=(x0 - ix0, y0 - iy0),
-    ).array
+    stamp = galsim.Image(b, scale=pix_arcsec, dtype=np.float32)
+    prof.drawImage(stamp, method="no_pixel", center=galsim.PositionD(x0, y0))
+    # cusp: fine pixels carry SB x fine area, so sum (not mean) them
+    h = _REFINE_HALF_MIN
+    bf = galsim.BoundsI(ix0 - h, ix0 + h, iy0 - h, iy0 + h)
+    ov = bf & b
+    if ov.isDefined():
+        nf = (2 * h + 1) * _REFINE
+        fine = prof.drawImage(
+            nx=nf, ny=nf, scale=pix_arcsec / _REFINE, method="no_pixel",
+            offset=((x0 - ix0) * _REFINE, (y0 - iy0) * _REFINE),
+        ).array
+        coarse = fine.reshape(2 * h + 1, _REFINE, 2 * h + 1, _REFINE).sum(axis=(1, 3))
+        stamp[ov].array[:] = coarse[ov.ymin - bf.ymin: ov.ymax - bf.ymin + 1,
+                                    ov.xmin - bf.xmin: ov.xmax - bf.xmin + 1]
     img = np.zeros(shape, dtype=np.float32)
-    sx_lo, sy_lo = max(0, half - ix0), max(0, half - iy0)
-    fx_lo, fy_lo = max(0, ix0 - half), max(0, iy0 - half)
-    w = min(n - sx_lo, nx - fx_lo)
-    h = min(n - sy_lo, ny - fy_lo)
-    img[fy_lo:fy_lo + h, fx_lo:fx_lo + w] = stamp[sy_lo:sy_lo + h, sx_lo:sx_lo + w]
+    img[b.ymin:b.ymax + 1, b.xmin:b.xmax + 1] = stamp.array
     return img
 
 
@@ -225,7 +239,8 @@ def render_image_profile(comp, wcs, shape, plate_scale_mas, sensorfilter):
                        fill_value=np.nan)
     except NoOverlapError:
         return None
-    img, _ = reproject_interp((cut.data, cut.wcs), wcs, shape_out=shape)
+    img = reproject_interp((cut.data, cut.wcs), wcs, shape_out=shape,
+                           return_footprint=False, block_size=(1024, 1024))
     img = np.nan_to_num(img, nan=0.0, posinf=0.0, neginf=0.0)
     np.clip(img, 0.0, None, out=img)
     img *= rate_for_ab(comp.zp_ab, sensorfilter) * pix_out_arcsec2 / pix_in_arcsec2

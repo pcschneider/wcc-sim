@@ -45,8 +45,8 @@ route, in :mod:`wcc_sim.extended`:
    per pixel. Each component type has its own renderer
    (``render_component_profile`` dispatches on the class); what they share
    is the convention that a pixel holds the surface brightness *sampled at
-   the pixel centre* times the pixel area, with no pixel-response
-   convolution yet.
+   the pixel centre* times the pixel area (for ``ImageComponent``, bilinear
+   interpolation of the input), with no pixel-response convolution yet.
 2. **Group components by** ``(template, ebv)`` and sum the profiles of each
    group. Grouping exists for ``chromatic=True`` (:doc:`psf`), where the PSF
    kernel depends on the spectrum; otherwise every group gets the same
@@ -58,8 +58,9 @@ route, in :mod:`wcc_sim.extended`:
    model is active, scaled by ``1 / wing.flux_norm(half)`` so an extended
    source follows the same stamp-truncation convention as a star drawn
    with :func:`~wcc_sim.render.add_star` (see :doc:`scatter`). With the
-   default stamp this holds back about 2.4% of the flux; it is a documented
-   convention, not a loss.
+   default 129-pixel in-focus stamp this holds back under 1% of the flux
+   (about 2.4% for a 33-pixel stamp); it is a documented convention, not a
+   loss.
 4. **Add to the star image** before the noise stage, scaled by the exposure
    time. From here on a galaxy is just more electrons: it gets Poisson
    noise, contributes to saturation, and appears in ``CLEAN`` like
@@ -98,8 +99,7 @@ GalSim profiles
 .. code-block:: python
 
    import galsim
-   from wcc_sim import simulate_field, GalSimComponent
-   from wcc_sim.catalog import _empty_table
+   from wcc_sim import simulate_field, GalSimComponent, empty_catalog
 
    bulge = galsim.Sersic(n=4, half_light_radius=0.3, flux=0.3)
    disk = galsim.Exponential(half_light_radius=1.2, flux=0.7).shear(
@@ -107,18 +107,20 @@ GalSim profiles
    galaxy = GalSimComponent(ra=150.1, dec=2.2, profile=galsim.Add([bulge, disk]),
                             total_mag=14.0, template="G2V")
    field = simulate_field(150.1, 2.2, sensorfilter="zwo:r", shape=(512, 512),
-                          catalog=_empty_table(), extended_sources=[galaxy])
+                          catalog=empty_catalog(), extended_sources=[galaxy])
 
 ``profile`` is any ``galsim.GSObject`` with sizes in arcsec. GalSim is used
 only to *describe* the light distribution: wcc-sim calls ``withFlux`` with
 the rate implied by ``total_mag`` and ``template``, so the ``flux`` values
 above only set the bulge-to-disk ratio. The profile is drawn with
 ``drawImage(method="no_pixel")``, which samples surface brightness at pixel
-centres times pixel area, the same convention as the Sersic path, on an odd
-square stamp sized by ``getGoodImageSize`` and pasted at the sub-pixel
-centre. The stamp is capped at twice the frame size, so a galaxy centred far
-outside a frame it still covers would be truncated; centre it on or near the
-frame.
+centres times pixel area, the same convention as the Sersic path, directly
+onto the part of the frame inside its ``getGoodImageSize`` box, so a
+profile larger than the frame costs no more than the frame. The central
+cusp is re-drawn on the same 9x subgrid as the Sersic path and summed;
+without that a compact ``n=4`` profile would lose about 20% of its flux to
+pixel-centre sampling. Profiles smaller than a pixel belong in the
+point-source catalog.
 
 Two conventions differ from the Sersic path and are easy to trip over:
 
@@ -135,18 +137,17 @@ Real galaxies from calibrated images
 :class:`~wcc_sim.extended.ImageComponent` turns any calibrated image with a
 WCS into an extended source. It exists for full-frame simulations of real
 galaxies at a resolution close to WCC's, which in practice means Hubble
-mosaics: the WCC pixel is 16.87 mas and its PSF about 50 mas FWHM, and no
-ground-based survey resolves that.
+mosaics: the IMX455 pixel is 16.87 mas and the WCC PSF about 50 mas FWHM,
+and no ground-based survey resolves that.
 
 .. code-block:: python
 
-   from wcc_sim import simulate_field
-   from wcc_sim.catalog import _empty_table
+   from wcc_sim import simulate_field, empty_catalog
    from wcc_sim.phangs import phangs_component
 
    comp = phangs_component("ngc1300", "r")            # F555W mosaic, cached locally
    field = simulate_field(49.9208, -19.4111, sensorfilter="zwo:r", exptime=600,
-                          catalog=_empty_table(), extended_sources=[comp],
+                          catalog=empty_catalog(), extended_sources=[comp],
                           output="ngc1300_r.fits")
 
 The component holds the image array, its WCS and an AB zero point
@@ -163,8 +164,8 @@ The component holds the image array, its WCS and an AB zero point
 2. **Reproject onto the frame WCS** with ``reproject_interp`` (bilinear).
    Interpolation preserves surface brightness per input pixel, so the result
    is multiplied by the pixel-area ratio (WCC pixel over input pixel, about
-   0.18 for 0.04" HST pixels). The reprojected sum matches the input sum to
-   one part in ten thousand.
+   0.18 for 0.04" HST pixels). The test pins the reprojected flux to the
+   input flux at 2%.
 3. **Convert to WCC electrons.** Each pixel is treated as an AB-flat
    source of magnitude ``zp_ab - 2.5 log10(v)``:
    :func:`~wcc_sim.starflux.rate_for_ab` pushes a flat-F_nu spectrum through
@@ -177,8 +178,8 @@ The component holds the image array, its WCS and an AB zero point
 
 The frame then continues through the common convolution and noise steps.
 Because the HST image already contains its foreground stars, pass
-``catalog=_empty_table()``: the Gaia stars at that position would otherwise
-be drawn a second time.
+``catalog=empty_catalog()`` (:func:`wcc_sim.empty_catalog`): the Gaia stars
+at that position would otherwise be drawn a second time.
 
 PHANGS-HST mosaics on demand
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -204,7 +205,7 @@ F555W and F814W.
        single pointing.
    * - ``fetch_phangs(galaxy, band)``
      - Downloads the mosaic for WCC band ``"g"``, ``"r"`` or ``"i"`` once
-       into the cache and returns its path. About 576 MB per band.
+       into the cache and returns its path. 400 to 580 MB per band.
    * - ``load_hst_image(path)``
      - Any HST drizzled science image as an ``ImageComponent`` (data,
        WCS and ``zp_ab`` from the header).
@@ -226,8 +227,7 @@ One full IMX455 frame per band, then a Lupton asinh composite:
 
    import numpy as np
    from astropy.visualization import make_lupton_rgb
-   from wcc_sim import simulate_field
-   from wcc_sim.catalog import _empty_table
+   from wcc_sim import simulate_field, empty_catalog
    from wcc_sim.phangs import phangs_component
 
    ra, dec = 49.9208, -19.4111                      # NGC 1300
@@ -235,17 +235,17 @@ One full IMX455 frame per band, then a Lupton asinh composite:
    for band in "gri":
        comp = phangs_component("ngc1300", band)
        f = simulate_field(ra, dec, sensorfilter=f"zwo:{band}", exptime=600,
-                          catalog=_empty_table(), extended_sources=[comp],
+                          catalog=empty_catalog(), extended_sources=[comp],
                           seed=11, output=f"ngc1300_{band}.fits")
        frames[band] = f.image_adu - np.median(f.image_adu)
 
    rgb = make_lupton_rgb(frames["i"], frames["r"], frames["g"],
                          Q=8, stretch=np.percentile(frames["r"], 99.5))
 
-Each full frame takes 30 to 50 s on a laptop and the FITS product is about
+Each full frame takes 30 to 40 s on a laptop and the FITS product is about
 550 MB. NGC 1300 and NGC 4321 both fill the 2.7' x 1.8' frame; in 600 s a
-21 mag/arcsec² disk gives only about 8 e- per WCC pixel, so bin the display
-or stack for a pretty picture.
+21 mag/arcsec² disk gives only about 10 (i) to 50 (g) e- per WCC pixel, so
+bin the display or stack for a pretty picture.
 The tutorial notebook :doc:`../notebooks/11_galaxies_phangs` runs this for
 NGC 1300 and NGC 4321 with the frames and composites shown.
 
@@ -254,7 +254,7 @@ Caveats to read the frames with
 
 - **Resolution.** The HST PSF (about 0.08" to 0.10" FWHM for ACS) is in
   the input and is convolved again with the WCC PSF, so the frame's
-  effective resolution is about 0.095": roughly twice as coarse as WCC
+  effective resolution is about 0.1": roughly twice as coarse as WCC
   alone. It is not deconvolved, because the target PSF is narrower than the
   source PSF and deconvolution would only amplify noise.
 - **Bands are mapped, not transformed.** F435W to g, F555W to r and F814W

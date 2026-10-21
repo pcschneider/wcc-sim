@@ -3,7 +3,7 @@
 The HLSP at https://archive.stsci.edu/hlsps/phangs-hst/ holds drizzled,
 flux-calibrated mosaics (0.04"/px, e-/s, PHOTFLAM/PHOTPLAM in the header) of
 38 nearby spirals in F275W, F336W, F435W or F438W, F555W and F814W. Files are
-~576 MB per band and are downloaded on first use into `cache_dir`
+400 to 580 MB per band and are downloaded on first use into `cache_dir`
 (default ~/.cache/wcc_sim/phangs).
 
     comp = phangs_component("ngc1300", "r")      # F555W mosaic as an ImageComponent
@@ -12,6 +12,8 @@ flux-calibrated mosaics (0.04"/px, e-/s, PHOTFLAM/PHOTPLAM in the header) of
 
 import os
 import re
+import shutil
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -35,7 +37,10 @@ def _cache_dir(cache_dir=None):
 
 
 def _galaxy_key(galaxy):
-    return re.sub(r"[\s_-]", "", str(galaxy)).lower()
+    key = re.sub(r"[\s_-]", "", str(galaxy)).lower()
+    if not re.fullmatch(r"[a-z0-9]+", key):
+        raise ValueError(f"not a galaxy name: {galaxy!r}")
+    return key
 
 
 def _listing(url):
@@ -69,7 +74,7 @@ def list_phangs_files(galaxy):
 
 def fetch_phangs(galaxy, band, cache_dir=None):
     """Download (once) the PHANGS mosaic for WCC `band` ('g', 'r' or 'i');
-    returns the local path. ~576 MB per file."""
+    returns the local path. 400 to 580 MB per file."""
     files = list_phangs_files(galaxy)
     try:
         hst = next(f for f in HST_FILTERS[band] if f in files)
@@ -80,7 +85,9 @@ def fetch_phangs(galaxy, band, cache_dir=None):
     dest = _cache_dir(cache_dir) / Path(files[hst]).name
     if not dest.exists():
         tmp = dest.with_suffix(".part")
-        urllib.request.urlretrieve(PHANGS_URL + files[hst], tmp)
+        with urllib.request.urlopen(PHANGS_URL + files[hst], timeout=60) as r, \
+                open(tmp, "wb") as f:
+            shutil.copyfileobj(r, f)
         tmp.rename(dest)
     return dest
 
@@ -95,7 +102,7 @@ def load_hst_image(path):
     """An HST drizzled science image (e-/s) as an ImageComponent."""
     from .extended import ImageComponent
 
-    with fits.open(path, memmap=True) as hdul:
+    with fits.open(path, memmap=False) as hdul:   # one copy, not two
         hdu = hdul[0] if hdul[0].data is not None else hdul[1]
         data = np.asarray(hdu.data, dtype=np.float32)
         header = hdu.header

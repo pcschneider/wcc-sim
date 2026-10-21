@@ -54,7 +54,7 @@ data. The rest each cover one topic.
    * - :doc:`notebooks/11_galaxies_phangs`
      - Full-frame g, r, i images of two real galaxies (NGC 1300, NGC 4321)
        from PHANGS-HST mosaics via ``ImageComponent``, written as FITS, and
-       a Lupton colour composite. Downloads ~3.5 GB of HST data on first
+       a Lupton colour composite. Downloads ~3 GB of HST data on first
        run and takes a few minutes; see :doc:`user_guide/galaxies`.
 
 .. toctree::

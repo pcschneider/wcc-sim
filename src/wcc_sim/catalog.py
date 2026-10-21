@@ -78,9 +78,18 @@ def _cache_paths(cache_dir, ra_deg, dec_deg, radius_arcsec, mag_limit):
     return [os.path.join(cache_dir, k + ".ecsv") for k in (rounded, legacy)]
 
 
-def _empty_table():
+def empty_catalog():
+    """An empty source table with the catalog columns.
+
+    Pass it as ``catalog=`` to :func:`wcc_sim.simulate_field` to skip the Gaia
+    query, for example when the stars are already in an
+    :class:`~wcc_sim.ImageComponent`.
+    """
     return Table({c: np.array([], dtype=np.int64 if c == "source_id" else float)
                   for c in COLUMNS})
+
+
+_empty_table = empty_catalog
 
 
 def query_gaia(ra_deg, dec_deg, radius_arcsec, mag_limit=21.0, cache_dir=None):

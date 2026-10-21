@@ -11,6 +11,31 @@ def test_ab_zeropoint_hst_f814w():
     assert ab_zeropoint(header) == pytest.approx(25.94, abs=0.02)
 
 
+def test_fetch_phangs_downloads_once(tmp_path, monkeypatch):
+    import io
+
+    from wcc_sim import phangs
+
+    monkeypatch.setattr(phangs, "list_phangs_files",
+                        lambda galaxy: {"f555w": "ngc1300mosaic/x_f555w_v1_exp-drc-sci.fits"})
+    calls = []
+
+    def fake_urlopen(url, timeout=None):
+        calls.append(url)
+        return io.BytesIO(b"FITS")
+
+    monkeypatch.setattr(phangs.urllib.request, "urlopen", fake_urlopen)
+    dest = phangs.fetch_phangs("NGC 1300", "r", cache_dir=tmp_path)
+    assert dest == tmp_path / "x_f555w_v1_exp-drc-sci.fits"
+    assert dest.read_bytes() == b"FITS" and not dest.with_suffix(".part").exists()
+    assert phangs.fetch_phangs("ngc1300", "r", cache_dir=tmp_path) == dest
+    assert len(calls) == 1
+    with pytest.raises(ValueError, match="no .* mosaic"):
+        phangs.fetch_phangs("ngc1300", "g", cache_dir=tmp_path)
+    with pytest.raises(ValueError, match="galaxy name"):
+        phangs._galaxy_key("../etc")
+
+
 def test_filename_pattern_and_galaxy_key():
     from wcc_sim.phangs import _SCI_RE, _galaxy_key
 
