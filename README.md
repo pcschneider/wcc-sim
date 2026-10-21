@@ -79,7 +79,11 @@ wcc-phot f*.fits --ra 150.1 --dec 2.2 --method psf -o phot.fits --report report.
 (9568 x 6380 px, 16.87 mas/pix) and `qcmos:*` the Hamamatsu HWK4123
 (4096 x 2304 px, 20.64 mas/pix). `focus=0|1|2` selects in-focus, +1 wave or
 +2 waves of defocus. `extended_sources=[SersicComponent(...)]` adds analytic
-galaxy light and `chromatic=True` switches to spectrum-weighted PSFs (in focus
+galaxy light, `GalSimComponent(profile=<any galsim.GSObject>, total_mag=...)`
+adds a galaxy drawn by GalSim, `ImageComponent(data, wcs, zp_ab)` reprojects a
+calibrated image such as an HST mosaic onto the frame (`wcc_sim.phangs`
+fetches PHANGS-HST mosaics on demand; both need `pip install
+wcc-sim[galaxies]`), and `chromatic=True` switches to spectrum-weighted PSFs (in focus
 only).
 
 # Tutorial

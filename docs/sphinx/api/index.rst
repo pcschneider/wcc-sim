@@ -35,6 +35,7 @@ Modules
    scatter
    render
    extended
+   phangs
    detectors
    wcsutil
    fitswriter

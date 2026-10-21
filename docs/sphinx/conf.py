@@ -69,7 +69,7 @@ autodoc_default_options = {
 # it. Mock exactly what is missing so the docstrings still render.
 autodoc_mock_imports = []
 for _optional in ("wcc_etc", "astroquery", "synphot", "photutils",
-                  "dust_extinction"):
+                  "dust_extinction", "galsim", "reproject"):
     try:
         __import__(_optional)
     except ImportError:

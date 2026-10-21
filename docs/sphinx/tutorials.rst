@@ -51,6 +51,11 @@ data. The rest each cover one topic.
      - Every ``.plot_*`` method once: images with catalog and saturation
        overlays, cutouts, the PSF radial profile, stamps and encircled
        energy, and the photometry panels, all with ``ax=``.
+   * - :doc:`notebooks/11_galaxies_phangs`
+     - Full-frame g, r, i images of two real galaxies (NGC 1300, NGC 4321)
+       from PHANGS-HST mosaics via ``ImageComponent``, written as FITS, and
+       a Lupton colour composite. Downloads ~3 GB of HST data on first
+       run and takes a few minutes; see :doc:`user_guide/galaxies`.
 
 .. toctree::
    :maxdepth: 1
@@ -66,3 +71,4 @@ data. The rest each cover one topic.
    notebooks/08_psf_wings
    notebooks/09_wcc_phot_photometry
    notebooks/10_plotting
+   notebooks/11_galaxies_phangs

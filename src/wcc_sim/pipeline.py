@@ -229,8 +229,10 @@ def simulate_field(
     `report=path` writes a PDF+PNG showing the PSF's radial profile split
     into its Airy and scattered-light terms (see wcc_sim.psfreport).
 
-    `extended_sources` (list of wcc_sim.extended.SersicComponent) adds
-    smooth analytic components, rendered at native resolution and
+    `extended_sources` (list of wcc_sim.extended.SersicComponent,
+    GalSimComponent wrapping any galsim.GSObject, and/or ImageComponent
+    reprojecting a calibrated image such as a PHANGS-HST mosaic) adds
+    extended components, rendered at native resolution and
     FFT-convolved with the PSF before the noise model. `chromatic=True`
     replaces the central-wavelength PSF with spectrum-weighted effective
     PSFs — per spectral type for point sources and per (template, ebv)
