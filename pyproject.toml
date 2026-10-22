@@ -35,7 +35,8 @@ wcc-sim = "wcc_sim.cli:main"
 wcc-phot = "wcc_phot.cli:main"
 
 [project.optional-dependencies]
-test = ["pytest", "ruff"]
+test = ["pytest", "ruff", "reproject"]   # reproject: tests of the image sources (wcc_sim.resample)
+image = ["reproject"]    # flux-conserving resampling of user images (wcc_sim.resample)
 docs = [
     "sphinx",
     "sphinx-rtd-theme",
