@@ -9,12 +9,12 @@ from astropy.wcs import WCS
 from wcc_sim.fitsimage import ImageInput, image_unit, image_wcs, read_image_fits
 
 RA0, DEC0 = 212.04231062531, -41.3979370253
-SCALE_MAS = 5.58036  # polaris2wcc-like pixel scale
+SCALE_MAS = 5.58036  # pixel scale of a converted POLARIS model
 N = 32
 
 
 def sky_header(shape=(N, N), bunit="Jy/pixel"):
-    """Header with a TAN WCS centred on the image, as polaris2wcc.py writes it."""
+    """Header with a TAN WCS centred on the image, as for a converted model image."""
     ny, nx = shape[-2:]
     w = WCS(naxis=2)
     w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
@@ -124,12 +124,12 @@ def test_missing_celestial_wcs():
         ImageInput.from_fits((image(), hdr))
 
 
-def test_alternate_wcs_only_points_to_polaris2wcc():
+def test_alternate_wcs_only_gets_hint():
     hdr = fits.Header({"CTYPE1": "PARAM", "CTYPE2": "PARAM",
                        "CTYPE1A": "RA---TAN", "CTYPE2A": "DEC--TAN",
                        "CRVAL1A": 0.0, "CRVAL2A": 0.0, "CDELT1A": -1e-6, "CDELT2A": 1e-6,
                        "BUNIT": "Jy/pixel"})
-    with pytest.raises(ValueError, match="polaris2wcc"):
+    with pytest.raises(ValueError, match="alternate WCS"):
         image_wcs(hdr)
 
 

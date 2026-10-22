@@ -2,7 +2,7 @@
 
 A thin wrapper: SkyImageComponent.from_fits -> detector_frame -> WCCObservation
 -> expose. Fluxes are taken from the input image (its BUNIT); scale them
-beforehand (e.g. polaris2wcc.py --band/--mag/--flux, adjust_contrast.py). For
+beforehand (e.g. normalise the model in the detector band). For
 several images, or several exposures of one set-up, use WCCObservation directly.
 """
 

@@ -13,7 +13,7 @@ Jy units, flat in F_lambda for F_lambda units) normalised to 1 Jy or
 1 erg/s/cm2/A (zero points from astropy's ABmag / STmag) and integrated through
 the telescope + WCC throughput. Pixel values are thus taken as the band-mean
 flux density of a flat spectrum. For an image normalised in the same WCC filter
-(e.g. polaris2wcc.py --band zwo:halpha2) this is exact by construction: the
+(e.g. a model normalised in zwo:halpha2) this is exact by construction: the
 band-mean F_nu is defined by equal photon counts. For another band it is a
 flat-spectrum transfer.
 

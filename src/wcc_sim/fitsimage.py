@@ -1,7 +1,7 @@
 """Validated input images: 2-D flux per pixel, a celestial WCS and an explicit unit.
 
 `ImageInput.from_fits` is the entry point for user-supplied sky images (e.g.
-model images converted with polaris2wcc.py). Every `ImageInput` is checked on
+model images converted from radiative-transfer output). Every `ImageInput` is checked on
 construction, so code downstream (resampling, rendering) can rely on:
 
 - `data`: 2-D float64, finite, no negative values, not all zero, read-only;
@@ -38,7 +38,7 @@ def _as_image_array(data, shape_in=None):
     if arr.ndim != 2:
         raise ValueError(
             f"image must be 2-D after dropping length-1 axes, got shape {arr.shape} "
-            f"(from {shape_in}); select one plane first, e.g. with polaris2wcc.py")
+            f"(from {shape_in}); select one plane first")
     bad = int(np.count_nonzero(~np.isfinite(arr)))
     if bad:
         raise ValueError(f"image contains {bad} non-finite pixel(s) (NaN or inf)")
@@ -107,7 +107,7 @@ def image_wcs(header):
         hint = ""
         if alt:
             hint = (f"; the sky WCS is only an alternate WCS ({', '.join(alt)}), as in "
-                    "POLARIS output -- convert the file with polaris2wcc.py")
+                    "POLARIS output -- convert it to a 2-D image with a celestial WCS first")
         found = ", ".join(c for c in ctypes if not c.split("=")[0][-1].isalpha()) or "none"
         raise ValueError(f"no celestial WCS: need {_WCS_NEEDS}; found CTYPEs: "
                          f"{found}{hint}")
