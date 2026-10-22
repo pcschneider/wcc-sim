@@ -35,7 +35,7 @@ class Subgrid(NamedTuple):
     """Cutout on a detector-aligned sub-grid: `data` has shape ((y1 - y0) * k, (x1 - x0) * k).
 
     `data` is in the input's units per sub-pixel (e-/s after
-    ImageComponent.rate_map). k = 1 means detector resolution, e.g. the output of
+    SkyImageComponent.rate_map). k = 1 means detector resolution, e.g. the output of
     render.render_subgrid.
     """
 

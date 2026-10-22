@@ -1,13 +1,13 @@
 """simulate_image: one call from a sky image (FITS) to a simulated WCC exposure.
 
-A thin wrapper: ImageComponent.from_fits -> detector_frame -> WCCObservation
+A thin wrapper: SkyImageComponent.from_fits -> detector_frame -> WCCObservation
 -> expose. Fluxes are taken from the input image (its BUNIT); scale them
 beforehand (e.g. polaris2wcc.py --band/--mag/--flux, adjust_contrast.py). For
 several images, or several exposures of one set-up, use WCCObservation directly.
 """
 
 from .detectors import detector_frame
-from .imagesource import ImageComponent
+from .imagesource import SkyImageComponent
 from .observation import WCCObservation
 
 
@@ -31,7 +31,7 @@ def simulate_image(image, *, ra=None, dec=None, offset_arcsec=(0.0, 0.0), pa=0.0
     """
     if (ra is None) != (dec is None):
         raise ValueError("give both ra and dec, or neither (image centre)")
-    comp = ImageComponent.from_fits(image, ext=ext, flux_unit=flux_unit)
+    comp = SkyImageComponent.from_fits(image, ext=ext, flux_unit=flux_unit)
     centre = comp.centre_radec if ra is None else (float(ra), float(dec))
     frame = detector_frame(sensorfilter, centre, offset_arcsec=offset_arcsec, pa=pa,
                            shape=shape)

@@ -157,8 +157,10 @@ details and the CLI flag names are on the :doc:`../cli` page.
        ``wings=False``) and override the instrument-wide scattered
        fraction. See :doc:`scatter`.
    * - ``extended_sources``
-     - List of :class:`~wcc_sim.extended.SersicComponent` for analytic
-       galaxy light, convolved with the PSF.
+     - List of :class:`~wcc_sim.extended.SersicComponent`,
+       :class:`~wcc_sim.extended.GalSimComponent` or
+       :class:`~wcc_sim.extended.ImageComponent` for galaxy light,
+       convolved with the PSF. See :doc:`galaxies`.
    * - ``gain_mode``
      - Readout gain for multi-mode detectors (qCMOS ``"high"`` 32x or
        ``"low"`` 1x); sets which ceiling saturates first. See :doc:`noise`.

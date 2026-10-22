@@ -51,9 +51,14 @@ data. The rest each cover one topic.
      - Every ``.plot_*`` method once: images with catalog and saturation
        overlays, cutouts, the PSF radial profile, stamps and encircled
        energy, and the photometry panels, all with ``ax=``.
-   * - :doc:`notebooks/11_image_sources`
+   * - :doc:`notebooks/11_galaxies_phangs`
+     - Full-frame g, r, i images of two real galaxies (NGC 1300, NGC 4321)
+       from PHANGS-HST mosaics via ``ImageComponent``, written as FITS, and
+       a Lupton colour composite. Downloads ~3 GB of HST data on first
+       run and takes a few minutes; see :doc:`user_guide/galaxies`.
+   * - :doc:`notebooks/12_image_sources`
      - Simulate a sky image (star, inclined ring, planet) instead of a
-       catalog: ``ImageComponent``, flux to count rate, ``detector_frame``
+       catalog: ``SkyImageComponent``, flux to count rate, ``detector_frame``
        with offset and position angle, flux-conserving resampling,
        ``WCCObservation`` (PSF, wings, halo), exposures, ``simulate_image``,
        the FITS header and COMP table, and several components.
@@ -72,4 +77,5 @@ data. The rest each cover one topic.
    notebooks/08_psf_wings
    notebooks/09_wcc_phot_photometry
    notebooks/10_plotting
-   notebooks/11_image_sources
+   notebooks/11_galaxies_phangs
+   notebooks/12_image_sources

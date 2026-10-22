@@ -25,9 +25,10 @@ def require_wcc_etc(minimum=WCC_ETC_MINIMUM):
 
 require_wcc_etc()
 
-from .extended import SersicComponent  # noqa: E402,F401
+from .catalog import empty_catalog  # noqa: E402,F401
+from .extended import GalSimComponent, ImageComponent, SersicComponent  # noqa: E402,F401
 from .pipeline import SimulatedField, simulate_field  # noqa: E402,F401
 from .detectors import detector_frame  # noqa: E402,F401
 from .imagesim import simulate_image  # noqa: E402,F401
-from .imagesource import ImageComponent  # noqa: E402,F401
+from .imagesource import SkyImageComponent  # noqa: E402,F401
 from .observation import WCCObservation  # noqa: E402,F401

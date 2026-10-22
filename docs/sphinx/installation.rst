@@ -36,6 +36,7 @@ Optional extras add the test tools and the documentation toolchain:
 
    pip install -e ".[test]"   # pytest, ruff
    pip install -e ".[docs]"   # Sphinx, nbsphinx, the theme
+   pip install -e ".[galaxies]"   # galsim + reproject, for GalSim and HST-image galaxies
 
 Using a conda environment
 -------------------------

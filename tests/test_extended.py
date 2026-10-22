@@ -216,3 +216,107 @@ def test_render_extended_all_off_frame():
     img = render_extended([comp], _wcs(), SHAPE, PLATE_MAS, "zwo:r",
                           {(comp.template, comp.ebv): _mono_kernel()})
     assert img.sum() == 0.0
+
+
+def test_galsim_component_matches_sersic():
+    """galsim.Sersic through GalSimComponent reproduces the analytic
+    SersicComponent: same total flux and same off-cusp pixel values."""
+    galsim = pytest.importorskip("galsim")
+    from wcc_sim.extended import GalSimComponent, render_component_profile
+
+    r_eff = 0.1  # arcsec, ~6 px
+    ana = _comp(n=1.0, r_eff_arcsec=r_eff, ellip=0.3, pa_deg=40.0, total_mag=15.0)
+    # astropy ellip keeps the major axis at r_eff and shrinks the minor one;
+    # galsim's area-preserving shear() would not, so compress y instead.
+    prof = (
+        galsim.Sersic(n=1.0, half_light_radius=r_eff)
+        .transform(1.0, 0.0, 0.0, 0.7)
+        .rotate(40.0 * galsim.degrees)
+    )
+    gs = GalSimComponent(ra=RA0, dec=DEC0, profile=prof, total_mag=15.0)
+    a = render_component_profile(ana, _wcs(), SHAPE, PLATE_MAS, "zwo:r")
+    g = render_component_profile(gs, _wcs(), SHAPE, PLATE_MAS, "zwo:r")
+    assert g.sum() == pytest.approx(a.sum(), rel=0.02)
+    off = a > 0.01 * a.max()  # away from the refined cusp pixels
+    off &= a < 0.5 * a.max()
+    assert np.allclose(g[off], a[off], rtol=0.03)
+
+    with pytest.raises(TypeError):
+        GalSimComponent(ra=RA0, dec=DEC0, profile=1.0, total_mag=15.0)
+    far = GalSimComponent(ra=RA0 + 1.0, dec=DEC0, profile=prof, total_mag=15.0)
+    assert render_component_profile(far, _wcs(), SHAPE, PLATE_MAS, "zwo:r") is None
+
+
+def test_galsim_cusp_keeps_flux():
+    """A compact n=4 profile (r_eff = 1 px) through GalSimComponent keeps
+    its flux: without the subgrid cusp refinement the pixel-center sampling
+    lost ~20% of it."""
+    galsim = pytest.importorskip("galsim")
+    from wcc_sim.extended import (
+        GalSimComponent, component_total_rate, render_component_profile,
+    )
+
+    r_eff = PLATE_MAS / 1000.0  # one pixel
+    ana = _comp(n=4.0, r_eff_arcsec=r_eff, total_mag=15.0)
+    gs = GalSimComponent(ra=RA0, dec=DEC0, total_mag=15.0,
+                         profile=galsim.Sersic(n=4.0, half_light_radius=r_eff))
+    a = render_component_profile(ana, _wcs(), SHAPE, PLATE_MAS, "zwo:r")
+    g = render_component_profile(gs, _wcs(), SHAPE, PLATE_MAS, "zwo:r")
+    total = component_total_rate(gs, "zwo:r")
+    assert g.sum() == pytest.approx(total, rel=0.02)
+    assert g.sum() == pytest.approx(a.sum(), rel=0.02)
+    assert g.max() == pytest.approx(a.max(), rel=0.02)
+
+    # a profile wider than the frame draws only the frame intersection
+    big = GalSimComponent(ra=RA0, dec=DEC0, total_mag=10.0,
+                          profile=galsim.Sersic(n=4.0, half_light_radius=10.0))
+    img = render_component_profile(big, _wcs(), SHAPE, PLATE_MAS, "zwo:r")
+    assert img.shape == SHAPE and img.dtype == np.float32 and img.max() > 0
+
+
+def test_rate_for_ab_scales():
+    from wcc_sim.starflux import rate_for_ab
+
+    r20 = rate_for_ab(20.0, "zwo:r")
+    assert r20 > 0
+    assert rate_for_ab(22.5, "zwo:r") == pytest.approx(r20 * 10 ** (-1.0), rel=1e-9)
+
+
+def test_image_component_conserves_flux():
+    """A flat patch of known AB surface brightness on a coarser WCS lands in
+    the frame with the right total e-/s, whatever the pixel-area ratio."""
+    pytest.importorskip("reproject")
+    from astropy.wcs import WCS
+
+    from wcc_sim.extended import ImageComponent, render_component_profile
+    from wcc_sim.starflux import rate_for_ab
+
+    # input: 0.04"/px like HST, 200x200 px, centred on the frame centre
+    w = WCS(naxis=2)
+    w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+    w.wcs.crval = [RA0, DEC0]
+    w.wcs.crpix = [100.5, 100.5]
+    w.wcs.cdelt = [-0.04 / 3600, 0.04 / 3600]
+    data = np.zeros((200, 200), dtype=np.float32)
+    data[80:120, 80:120] = 2.0   # 40x40 input px = 1.6" square
+    data[:5, :5] = np.nan         # footprint hole, must render as 0
+    zp = 25.0
+    comp = ImageComponent(data=data, wcs=w, zp_ab=zp)
+    img = render_component_profile(comp, _wcs(), SHAPE, PLATE_MAS, "zwo:r")
+    expected = 2.0 * 40 * 40 * rate_for_ab(zp, "zwo:r")
+    assert img.sum() == pytest.approx(expected, rel=0.02)
+    assert img.min() >= 0.0
+
+    far = WCS(w.to_header())
+    far.wcs.crval = [RA0 + 1.0, DEC0]
+    assert render_component_profile(
+        ImageComponent(data=data, wcs=far, zp_ab=zp), _wcs(), SHAPE, PLATE_MAS, "zwo:r"
+    ) is None
+
+
+def test_image_component_rejects_integer_data():
+    from astropy.wcs import WCS
+    from wcc_sim.extended import ImageComponent
+
+    with pytest.raises(ValueError, match="float"):
+        ImageComponent(data=np.zeros((4, 4), dtype=np.int32), wcs=WCS(naxis=2), zp_ab=25.0)

@@ -1,6 +1,6 @@
 """An observation of extended sources with one WCC detector (WCCObservation).
 
-Brings together what is observed (ExtendedComponents, e.g. ImageComponent),
+Brings together what is observed (ExtendedComponents, e.g. SkyImageComponent),
 where the detector looks (a DetectorFrame: WCS with pointing, offset and pa,
 shape, pixel scale, filter) and how the instrument is set up (focus, jitter,
 PSF wings, scattered-light halo). The PSF is built for whatever sub-grid

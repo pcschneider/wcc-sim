@@ -184,6 +184,25 @@ def make_star_simulation(spt, sensorfilter, mag=REF_MAG):
     return Simulation.from_sensorfilter(sensorfilter, scene)
 
 
+_AB_RATE_CACHE = {}
+
+
+def rate_for_ab(mag_ab, sensorfilter):
+    """Point-source rate (e-/s) of a flat-F_nu source of AB magnitude `mag_ab`.
+
+    An AB-flat spectrum has the same AB magnitude in every bandpass, so the
+    normalization bandpass is irrelevant; the rate at AB = REF_MAG through
+    the ETC is memoized per sensorfilter and scaled.
+    """
+    if sensorfilter not in _AB_RATE_CACHE:
+        scene = get_scene("flat", mag=REF_MAG, magsys="abmag", bandpass="johnson_v")
+        sim = Simulation.from_sensorfilter(sensorfilter, scene)
+        _AB_RATE_CACHE[sensorfilter] = float(
+            sim._count_rate_components()["source_rate_total"]
+        )
+    return _AB_RATE_CACHE[sensorfilter] * 10.0 ** (-0.4 * (mag_ab - REF_MAG))
+
+
 def rate_for_spt(spt, sensorfilter):
     """Total point-source rate (e-/s) at G = REF_MAG, memoized.
 

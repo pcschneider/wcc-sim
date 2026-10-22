@@ -6,7 +6,7 @@ from astropy.wcs import WCS
 
 from wcc_sim.detectors import detector_frame
 from wcc_sim.fitsimage import ImageInput
-from wcc_sim.imagesource import ImageComponent
+from wcc_sim.imagesource import SkyImageComponent
 from wcc_sim.observation import WCCObservation
 from wcc_sim.resample import Subgrid
 
@@ -25,7 +25,7 @@ def component(ra=RA0, dec=DEC0, scale_mas=5.58, n=60, value=1e-3):
     h["BUNIT"] = "Jy/pixel"
     data = np.full((n, n), value)
     data[n // 2, n // 2] = 100 * value       # a "star"
-    return ImageComponent(ImageInput.from_fits((data, h)))
+    return SkyImageComponent(ImageInput.from_fits((data, h)))
 
 
 def frame(shape=(161, 161)):   # > 129 px stamp + component

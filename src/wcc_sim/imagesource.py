@@ -1,11 +1,17 @@
-"""User-supplied sky images as extended sources (ImageComponent).
+"""User-supplied sky images as extended sources (SkyImageComponent).
 
-An ImageComponent wraps a validated ImageInput (fitsimage.py): pixel values in
+A SkyImageComponent wraps a validated ImageInput (fitsimage.py): pixel values in
 physical units (BUNIT), a celestial WCS and an optional BAND. Its rate_map
 converts the image to e-/s for a WCC filter (fluxrate.flux_to_rate, flat
 spectrum; warns if BAND differs) and resamples it flux-conservingly onto the
 detector sub-grid (resample.py). Pointing, offset and rotation are not part of
 the component: they are in the detector WCS (detectors.detector_frame).
+
+Not to be confused with extended.ImageComponent (an AB-calibrated image, e.g. a
+PHANGS-HST mosaic, for simulate_field's extended_sources): that one is
+reprojected bilinearly onto the frame and convolved at detector resolution;
+SkyImageComponent is rendered on the sub-grid (render.render_subgrid), which
+keeps compact structure in images finer than the detector pixel.
 """
 
 from dataclasses import dataclass
@@ -16,7 +22,7 @@ from .resample import choose_subgrid, footprint, resample_to_subgrid
 
 
 @dataclass(frozen=True)
-class ImageComponent(ExtendedComponent):
+class SkyImageComponent(ExtendedComponent):
     """A sky image (ImageInput) as an extended source."""
 
     image: ImageInput

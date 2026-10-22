@@ -7,7 +7,7 @@ from astropy.wcs import WCS
 from wcc_sim.detectors import detector_frame
 from wcc_sim.extended import ExtendedComponent
 from wcc_sim.fitsimage import ImageInput
-from wcc_sim.imagesource import ImageComponent
+from wcc_sim.imagesource import SkyImageComponent
 from wcc_sim.resample import choose_subgrid
 
 RA0, DEC0 = 291.0, 44.5
@@ -40,13 +40,13 @@ def test_extended_component_is_abstract():
 
 def test_kw_only_base_allows_positional_subclass_fields():
     data, h = sky_image()
-    comp = ImageComponent(ImageInput.from_fits((data, h)), label="x")
+    comp = SkyImageComponent(ImageInput.from_fits((data, h)), label="x")
     assert comp.label == "x" and comp.kind == "image"
 
 
 def test_rate_map_conserves_rate_and_chooses_k():
     data, h = sky_image()
-    comp = ImageComponent.from_fits((data, h))
+    comp = SkyImageComponent.from_fits((data, h))
     det = frame()
     sub = comp.rate_map(det.wcs, det.shape, det.plate_scale_mas, SF)
     expected = comp.image.rate_image(SF).sum()
@@ -58,13 +58,13 @@ def test_rate_map_conserves_rate_and_chooses_k():
 
 def test_footprint_matches_resample_and_off_detector():
     data, h = sky_image()
-    comp = ImageComponent.from_fits((data, h))
+    comp = SkyImageComponent.from_fits((data, h))
     det = frame()
     sub = comp.rate_map(det.wcs, det.shape, det.plate_scale_mas, SF)
     y0, y1, x0, x1 = comp.footprint(det.wcs, det.shape)
     assert (y0, x0) == (sub.y0, sub.x0)
     assert sub.data.shape == ((y1 - y0) * sub.k, (x1 - x0) * sub.k)
-    far = ImageComponent.from_fits(sky_image(dec=DEC0 + 0.1))
+    far = SkyImageComponent.from_fits(sky_image(dec=DEC0 + 0.1))
     assert far.footprint(det.wcs, det.shape) is None
     with pytest.warns(UserWarning, match="does not overlap"):
         assert far.rate_map(det.wcs, det.shape, det.plate_scale_mas, SF) is None
@@ -76,15 +76,15 @@ def test_from_fits_label_and_properties(tmp_path):
     data, h = sky_image()
     path = tmp_path / "model.fits"
     fits.PrimaryHDU(data, h).writeto(path)
-    comp = ImageComponent.from_fits(path)
+    comp = SkyImageComponent.from_fits(path)
     assert comp.label == "model.fits"
     assert comp.centre_radec == pytest.approx((RA0, DEC0), abs=1e-6)
-    assert ImageComponent.from_fits(path, label="mine").label == "mine"
+    assert SkyImageComponent.from_fits(path, label="mine").label == "mine"
 
 
 def test_band_warning_only_for_other_filter():
     data, h = sky_image(band="zwo:halpha2")
-    comp = ImageComponent.from_fits((data, h))
+    comp = SkyImageComponent.from_fits((data, h))
     det = frame()
     with pytest.warns(UserWarning, match="flat-spectrum transfer"):
         comp.rate_map(det.wcs, det.shape, det.plate_scale_mas, SF)
@@ -99,7 +99,7 @@ def test_to_record_bunit_as_written():
     from astropy.wcs import WCS
 
     from wcc_sim.fitsimage import ImageInput
-    from wcc_sim.imagesource import ImageComponent
+    from wcc_sim.imagesource import SkyImageComponent
 
     w = WCS(naxis=2)
     w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
@@ -108,7 +108,7 @@ def test_to_record_bunit_as_written():
     h = w.to_header()
     data = np.ones((8, 8))
     h["BUNIT"] = "mJy/pixel"
-    assert ImageComponent(ImageInput.from_fits((data, h))).to_record()["bunit"] == "mJy/pixel"
+    assert SkyImageComponent(ImageInput.from_fits((data, h))).to_record()["bunit"] == "mJy/pixel"
     del h["BUNIT"]
-    rec = ImageComponent(ImageInput.from_fits((data, h), flux_unit="Jy/pix")).to_record()
+    rec = SkyImageComponent(ImageInput.from_fits((data, h), flux_unit="Jy/pix")).to_record()
     assert rec["bunit"] == rec["unit"] == "Jy / pix"
