@@ -13,6 +13,8 @@ output), the same type simulate_field returns. One observation can be exposed
 many times; PSF and rendering are done once.
 """
 
+import math
+import numbers
 import secrets
 
 import numpy as np
@@ -20,20 +22,48 @@ from astropy import units as u
 from astropy.table import Table
 
 from .detectors import get_geometry, make_base_simulation, saturation_level_e
+from .extended import MemoryEstimate
 from .fluxrate import band_fluxes, flux_to_rate
 from .pipeline import SimulatedField, _core_wing
 from .psf import DEFAULT_STAMP, render_oversampled_psf
-from .render import add_noise_and_digitize, bin_oversampled, render_subgrid, wing_blend
-from .resample import choose_subgrid
+from .render import (add_noise_and_digitize, bin_oversampled, render_peak_bytes,
+                     render_subgrid, wing_blend)
 from .scatter import halo_for_sensorfilter
 from .starflux import sky_and_dark_rates
 from .wings import CombinedWing, fit_wing_model
 
-# Default limit for estimated peak memory usage when resampling [in GB = 1e9 bytes]
-DEFAULT_MAX_MEMORY_GB = 4.0
+#: Default limit for the estimated peak memory of resampling and PSF convolution [GB = 1e9 bytes]
+DEFAULT_MAX_MEMORY_GB = 8.0
 
-# Estimated number of float64 arrays held per sub-pixel and per input pixel for resample_to_subgrid 
-_PEAK_FLOATS_PER_PIXEL = 14
+
+class MemoryLimitError(MemoryError):
+    """Estimated peak memory of resampling and PSF convolution exceeds max_memory_gb.
+
+    Raised before any large array is allocated. A subclass of MemoryError, so
+    `except MemoryError` still catches it.
+    """
+
+
+def _validate_max_memory_gb(value):
+    """Return `value` as float [GB], or None (no limit).
+
+    Accepts None or a real number (Python or numpy int/float) that is finite and
+    > 0. Raises TypeError for other types (str, bool, arrays, complex, Decimal)
+    and ValueError for NaN, +-inf, 0, negative or overflowing values.
+    """
+    if value is None:
+        return None
+    msg = "max_memory_gb must be None or a positive finite number [GB]"
+    if isinstance(value, bool) or not isinstance(value, numbers.Real):
+        raise TypeError(f"{msg}, got {value!r} of type {type(value).__name__}")
+    try:
+        gb = float(value)
+    except OverflowError as err:                       # e.g. 10**400
+        raise ValueError(f"{msg}, got {value!r}") from err
+    if not (math.isfinite(gb) and gb > 0):
+        raise ValueError(f"{msg}, got {value!r}")
+    return gb
+
 
 #: CAT columns of simulate_field; image fields write them with zero rows.
 _CAT_COLUMNS = (("source_id", np.int64), ("ra", float), ("dec", float),
@@ -77,6 +107,15 @@ class WCCObservation:
         self._halo = None
         self._subs = None    # per component: (rate_map Subgrid, rendered k = 1 Subgrid)
 
+    @property
+    def max_memory_gb(self):
+        """Limit [GB] for the estimated memory usage; None: no check."""
+        return self._max_memory_gb
+
+    @max_memory_gb.setter
+    def max_memory_gb(self, value):
+        self._max_memory_gb = _validate_max_memory_gb(value)
+
     # -- PSF ---------------------------------------------------------------------- #
 
     def _get_halo(self):
@@ -109,57 +148,65 @@ class WCCObservation:
     # -- rendering ---------------------------------------------------------------- #
 
     def memory_estimate(self):
-        """Estimated peak memory [bytes] for image resampling
+        """Estimated peak memory [bytes] for resampling and PSF convolution
 
-        Estimate per image component: 
-           N_pixel (in memory) =
-             PEAK_FLOATS_PER_PIXEL 
-             * ((y1 - y0) * (x1 - x0) # footprint
-             * k**2 # k = sub-grid factor (see SkyImageComponent.rate_map)
+        Per component the larger of resampling (its memory_estimate(); for
+        SkyImageComponent resample.resample_peak_bytes) and PSF convolution
+        (render.render_peak_bytes, depends on stamp_npix); components that return
+        None (no estimate) are skipped. Components are processed one after another
+        (_rendered), so the peak is the largest of these per-component values plus
+        what the earlier components keep (`kept`: their rate_map sub-grid and their
+        rendered cutout, the footprint padded by stamp_npix).
 
-        Total memory [bytes] = sum(N_pixel * 8)  
-        
         Returns
         -------
-        (total, rows) with one dict (label, box, k, bytes) per image component.
+        (peak, rows) with one dict (label, box, k, resample_bytes, shape_in, render_bytes) per
+        image component; shape_in is None if the component does not provide it.
         """
         f = self.frame
-        rows = []
+        rows, peak, kept = [], 0, 0
         for comp in self.components:
-            if not hasattr(comp, "image"):
+            est = comp.memory_estimate(f.wcs, f.shape, f.plate_scale_mas, k=self.subgrid)
+            if est is None:
                 continue
-            box = comp.footprint(f.wcs, f.shape)
-            k = choose_subgrid(comp.image.pixel_scale_mas, f.plate_scale_mas,
-                               override=self.subgrid)
-            n_bytes = 0
-            if box is not None:
-                y0, y1, x0, x1 = box
-                n_sub = (y1 - y0) * (x1 - x0) * k * k
-                n_in = int(np.prod(comp.image.shape))
-                n_bytes = 8 * _PEAK_FLOATS_PER_PIXEL * (n_sub + n_in)
-            rows.append({"label": comp.label or comp.kind, "box": box, "k": k, "bytes": n_bytes})
-        return sum(r["bytes"] for r in rows), rows
+            if not isinstance(est, MemoryEstimate):
+                raise TypeError(f"{type(comp).__name__}.memory_estimate() must return "
+                                f"extended.MemoryEstimate or None, not {type(est).__name__}")
+            render = render_peak_bytes(est.box, est.k, self.stamp_npix)
+            rows.append({"label": comp.label or comp.kind, **est._asdict(),
+                         "render_bytes": render})
+            peak = max(peak, kept + max(est.resample_bytes, render))
+            if est.box is not None:
+                y0, y1, x0, x1 = est.box
+                ny, nx, s = y1 - y0, x1 - x0, self.stamp_npix
+                n_sub = ny * nx * est.k ** 2            # rate_map sub-grid
+                n_cut = (ny + s - 1) * (nx + s - 1)     # rendered cutout
+                kept += 8 * (n_sub + n_cut)
+        return peak, rows
 
     def _check_memory(self):
-        """Raise MemoryError if memory_estimate() exceeds max_memory_gb (None: no check)."""
+        """Raise MemoryLimitError if memory_estimate() exceeds max_memory_gb (None: no check)."""
         if self.max_memory_gb is None:
             return
-        total, rows = self.memory_estimate()
-        limit = float(self.max_memory_gb) * 1e9
-        if total <= limit:
+        peak, rows = self.memory_estimate()
+        limit = self.max_memory_gb * 1e9
+        if peak <= limit:
             return
         parts = []
         for r in rows:
             if r["box"] is None:
                 continue
             y0, y1, x0, x1 = r["box"]
-            parts.append(f"{r['label']}: footprint {y1 - y0} x {x1 - x0} px, k = {r['k']}, "
-                         f"{r['bytes'] / 1e9:.2f} GB")
-        raise MemoryError(
-            f"resampling needs an estimated {total / 1e9:.2f} GB, above "
+            inp = (f", input {r['shape_in'][0]} x {r['shape_in'][1]} px"
+                   if r["shape_in"] is not None else "")
+            parts.append(f"{r['label']}: footprint {y1 - y0} x {x1 - x0} px at k = {r['k']}"
+                         f"{inp}, resampling {r['resample_bytes'] / 1e9:.2f} GB, "
+                         f"PSF convolution {r['render_bytes'] / 1e9:.2f} GB")
+        raise MemoryLimitError(
+            f"resampling and PSF convolution need an estimated {peak / 1e9:.2f} GB, above "
             f"max_memory_gb = {self.max_memory_gb:g} ({'; '.join(parts)}). Use a smaller "
-            "subgrid or input image, or raise "
-            "limit with \'max_memory_gb\'.")
+            "detector (sub)array or subgrid, crop or rebin the input image, or raise "
+            "max_memory_gb (None: no check).")
 
     def _rendered(self):
         """Per component (rate_map Subgrid, rendered Subgrid), or (None, None); cached."""

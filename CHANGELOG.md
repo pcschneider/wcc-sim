@@ -3,12 +3,26 @@
 ## Unreleased
 
 - Memory guard for image simulations (part of #57): before resampling,
-  `WCCObservation.memory_estimate()` estimates the peak conservatively from the
-  footprint, the sub-grid factor k and the input size (14 float64 per sub-pixel
-  and per input pixel, from tracemalloc measurements of `reproject_exact`).
-  Above `max_memory_gb` (default 4 GB, on `WCCObservation` and `simulate_image`)
-  a `MemoryError` names the footprint, k and the remedies; `None` switches the
+  `WCCObservation.memory_estimate()` estimates peak memory usage during
+  resampling and PSF convolution (depends on the PSF stamp size) conservatively.
+  For the resampling stage, memory usage depends on footprint on the detector,
+  the input image size, and the sub-grid (supersampling) factor k; the
+  conservative approx. requirements are 9 float64 per sub-pixel and 14 per input
+  pixel. For the PSF convolution, memory usage depends on footprint padded by
+  the stamp size. The `max_memory_gb` limit considers resampling and convolution
+  per component (plus already computed results). If the estimate is above
+  `max_memory_gb` (default 8 GB, on `WCCObservation` and `simulate_image`) a
+  `wcc_sim.MemoryLimitError` (subclass of `MemoryError`) with relevant
+  information is raised. Setting `max_memory_gb` to `None` turns the memory
   check off.
+- New method `ExtendedComponent.memory_estimate()`: returns `None` by default
+  (component not checked against `max_memory_gb`) or an
+  `extended.MemoryEstimate`; subclasses may override it.
+  `SkyImageComponent` overrides it; the formula is in
+  `resample.resample_peak_bytes()`. `WCCObservation` adds
+  `render.render_peak_bytes()` for PSF convolution.
+- Validation of `max_memory_gb`; now raising `TypeError`/`ValueError` if not
+  `None` or a positive finite number.
 
 ## 0.1.1 (2026-10-25)
 

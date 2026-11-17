@@ -3,7 +3,7 @@ import pytest
 from astropy.io import fits
 from astropy.wcs import WCS
 
-from wcc_sim import simulate_image
+from wcc_sim import MemoryLimitError, simulate_image
 
 RA0, DEC0 = 291.0, 44.5
 
@@ -55,6 +55,6 @@ def test_ra_without_dec_rejected(tmp_path):
 def test_memory_limit_option(tmp_path):
     path = write_image(tmp_path / "in.fits")
     kw = dict(focus=0, shape=(161, 161), exptime=10.0, seed=1, wings=False)
-    with pytest.raises(MemoryError, match="max_memory_gb"):
+    with pytest.raises(MemoryLimitError, match="max_memory_gb"):
         simulate_image(path, max_memory_gb=1e-6, **kw)
     assert simulate_image(path, max_memory_gb=None, **kw).params["image_total_e_s"] > 0

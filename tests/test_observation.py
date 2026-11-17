@@ -7,7 +7,7 @@ from astropy.wcs import WCS
 from wcc_sim.detectors import detector_frame
 from wcc_sim.fitsimage import ImageInput
 from wcc_sim.imagesource import SkyImageComponent
-from wcc_sim.observation import WCCObservation
+from wcc_sim.observation import MemoryLimitError, WCCObservation
 from wcc_sim.resample import Subgrid
 
 RA0, DEC0 = 291.0, 44.5
@@ -171,14 +171,18 @@ def test_band_fluxes_in_params():
 
 
 def test_memory_estimate_formula():
-    from wcc_sim.observation import _PEAK_FLOATS_PER_PIXEL
+    from wcc_sim.render import render_peak_bytes
+    from wcc_sim.resample import PEAK_FLOATS_PER_INPUT_PIXEL, PEAK_FLOATS_PER_SUBPIXEL
 
     comp, det = component(), frame()
     obs = WCCObservation(comp, det, focus=0, wings=False, subgrid=3)
     total, rows = obs.memory_estimate()
     y0, y1, x0, x1 = comp.footprint(det.wcs, det.shape)
-    expected = 8 * _PEAK_FLOATS_PER_PIXEL * ((y1 - y0) * (x1 - x0) * 9 + 60 * 60)
-    assert total == expected and rows[0]["k"] == 3 and rows[0]["bytes"] == expected
+    expected = 8 * (PEAK_FLOATS_PER_SUBPIXEL * (y1 - y0) * (x1 - x0) * 9
+                    + PEAK_FLOATS_PER_INPUT_PIXEL * 60 * 60)
+    render = render_peak_bytes((y0, y1, x0, x1), 3, obs.stamp_npix)
+    assert total == max(expected, render) and rows[0]["k"] == 3
+    assert rows[0]["resample_bytes"] == expected
     off = WCCObservation(component(ra=RA0 + 1.0), det, focus=0, wings=False)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -187,9 +191,74 @@ def test_memory_estimate_formula():
 
 def test_memory_limit_raises_before_resampling():
     obs = WCCObservation(component(), frame(), focus=0, wings=False, max_memory_gb=1e-6)
-    with pytest.raises(MemoryError, match=r"k = 5.*max_memory_gb"):
+    assert issubclass(MemoryLimitError, MemoryError)
+    with pytest.raises(MemoryLimitError, match=r"k = 5, input 60 x 60 px.*max_memory_gb"):
         obs.rate_image()
     assert obs._subs is None                          # nothing resampled or cached
     ok = WCCObservation(component(), frame(), focus=0, wings=False, max_memory_gb=None)
     assert ok.rate_image().sum() > 0
     assert WCCObservation(component(), frame(), focus=0, wings=False).rate_image().sum() > 0
+
+
+@pytest.mark.parametrize("value, err", [
+    ("8", TypeError), (True, TypeError), (np.array([8.0]), TypeError), (8 + 0j, TypeError),
+    (float("nan"), ValueError), (float("inf"), ValueError), (0, ValueError),
+    (-1, ValueError), (10**400, ValueError)])
+def test_max_memory_gb_validated(value, err):
+    with pytest.raises(err, match="max_memory_gb must be None or a positive finite number"):
+        WCCObservation(component(), frame(), focus=0, wings=False, max_memory_gb=value)
+
+
+def test_max_memory_gb_accepts_numbers():
+    for value in (8, 8.0, np.float32(8), np.int64(8), None):
+        obs = WCCObservation(component(), frame(), focus=0, wings=False, max_memory_gb=value)
+        assert obs.max_memory_gb == (None if value is None else 8.0)
+
+
+def test_memory_estimate_peak_not_sum():
+    det = frame()
+    one = WCCObservation(component(), det, focus=0, wings=False, subgrid=3)
+    two = WCCObservation([component(), component()], det, focus=0, wings=False, subgrid=3)
+    single, _ = one.memory_estimate()
+    peak, rows = two.memory_estimate()
+    assert len(rows) == 2 and single < peak < 2 * single
+
+
+def test_component_without_estimate_is_skipped():
+    from wcc_sim.extended import ExtendedComponent
+
+    class NoEstimate(ExtendedComponent):
+        def rate_map(self, det_wcs, det_shape, plate_scale_mas, sensorfilter, k=None):
+            return None
+
+        def footprint(self, det_wcs, det_shape):
+            return None
+
+    obs = WCCObservation([NoEstimate(), component()], frame(), focus=0, wings=False)
+    peak, rows = obs.memory_estimate()
+    assert len(rows) == 1 and rows[0]["shape_in"] == (60, 60)
+
+
+def test_memory_estimate_wrong_type_raises():
+    from wcc_sim.extended import ExtendedComponent
+
+    class DictEstimate(ExtendedComponent):
+        def rate_map(self, det_wcs, det_shape, plate_scale_mas, sensorfilter, k=None):
+            return None
+
+        def footprint(self, det_wcs, det_shape):
+            return None
+
+        def memory_estimate(self, det_wcs, det_shape, plate_scale_mas, k=None):
+            return {"box": None, "k": 1, "resample_bytes": 0}
+
+    obs = WCCObservation(DictEstimate(), frame(), focus=0, wings=False)
+    with pytest.raises(TypeError, match="MemoryEstimate or None"):
+        obs.memory_estimate()
+
+
+def test_memory_estimate_grows_with_stamp():
+    focus0 = WCCObservation(component(), frame(), focus=0, wings=False, subgrid=1)
+    focus2 = WCCObservation(component(), frame(), focus=2, wings=False, subgrid=1)
+    assert focus2.stamp_npix > focus0.stamp_npix
+    assert focus2.memory_estimate()[0] > focus0.memory_estimate()[0]

@@ -30,6 +30,12 @@ MAX_SUBGRID = 11
 #: catches edges that bow under a rotated or differently projected WCS.
 _EDGE_SAMPLES = 17
 
+#: float64 arrays alive at the peak of SkyImageComponent.rate_map (e-/s copy of the
+#: input + resample_to_subgrid), per sub-pixel and per input pixel. Peak
+#: resident set size (RSS) values are estimated via scripts/calibrate_peak_memory_use.py.
+PEAK_FLOATS_PER_SUBPIXEL = 9
+PEAK_FLOATS_PER_INPUT_PIXEL = 14
+
 
 class Subgrid(NamedTuple):
     """Cutout on a detector-aligned sub-grid: `data` has shape ((y1 - y0) * k, (x1 - x0) * k).
@@ -118,6 +124,21 @@ def subgrid_wcs(det_wcs, y0, x0, ny, nx, k):
         w.wcs.cdelt = np.asarray(w.wcs.cdelt) / k
     w.array_shape = (ny * k, nx * k)
     return w
+
+
+def resample_peak_bytes(img_shape, box, k):
+    """Estimated peak memory [bytes] of resample_to_subgrid; 0 if box is None.
+
+    img_shape : shape of the input image (n_in pixels)
+    box : (y0, y1, x0, x1) footprint on the detector [detector px]
+    k : sub-grid factor; the sub-grid holds n_sub sub-pixels
+    """
+    if box is None:
+        return 0
+    y0, y1, x0, x1 = box
+    n_sub = (y1 - y0) * (x1 - x0) * k * k     # footprint area x k**2
+    n_in = int(np.prod(img_shape))           # input pixels
+    return 8 * (PEAK_FLOATS_PER_SUBPIXEL * n_sub + PEAK_FLOATS_PER_INPUT_PIXEL * n_in)
 
 
 def resample_to_subgrid(data, img_wcs, det_wcs, det_shape, k):

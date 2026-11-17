@@ -16,9 +16,10 @@ keeps compact structure in images finer than the detector pixel.
 
 from dataclasses import dataclass
 
-from .extended import ExtendedComponent
+from .extended import ExtendedComponent, MemoryEstimate
 from .fitsimage import ImageInput
-from .resample import choose_subgrid, footprint, resample_to_subgrid
+from .resample import (choose_subgrid, footprint, resample_peak_bytes,
+                       resample_to_subgrid)
 
 
 @dataclass(frozen=True)
@@ -51,8 +52,19 @@ class SkyImageComponent(ExtendedComponent):
         image's e-/s before clipping to the detector.
         """
         rate = self.image.rate_image(sensorfilter)
-        k = choose_subgrid(self.image.pixel_scale_mas, plate_scale_mas, override=k)
+        k = self._subgrid_k(plate_scale_mas, k)
         return resample_to_subgrid(rate, self.image.wcs, det_wcs, det_shape, k)
+
+    def _subgrid_k(self, plate_scale_mas, k=None):
+        """Sub-grid factor used by rate_map (and memory_estimate)."""
+        return choose_subgrid(self.image.pixel_scale_mas, plate_scale_mas, override=k)
+
+    def memory_estimate(self, det_wcs, det_shape, plate_scale_mas, k=None):
+        """Estimated peak memory of rate_map (MemoryEstimate), same k and box as rate_map."""
+        k = self._subgrid_k(plate_scale_mas, k)
+        box = self.footprint(det_wcs, det_shape)
+        return MemoryEstimate(box, k, resample_peak_bytes(self.image.shape, box, k),
+                              shape_in=self.image.shape)
 
     def footprint(self, det_wcs, det_shape):
         return footprint(self.image.wcs, self.image.shape, det_wcs, det_shape)

@@ -9,6 +9,11 @@ from wcc_etc.psfsim import saturation_mask_from_image_e
 from .detectors import saturation_level_e
 from .starflux import sky_and_dark_rates
 
+#: float64 alive at the peak of render_subgrid per detector pixel of the stamp-padded
+#: footprint (accumulated output, one phase result, oaconvolve blocks); measured
+#: maximum 11.9 at k = 1 for stamps of 33-1025 px.
+RENDER_FLOATS_PER_PADDED_PIXEL = 12
+
 
 def bin_oversampled(stamp_os, oversample):
     n = stamp_os.shape[0] // oversample
@@ -184,6 +189,23 @@ def render_subgrid(sub, psf_k, wing=None, blend=None):
     if wing is not None:
         out = out / wing.flux_norm(float(half))
     return Subgrid(out, sub.y0 - half, sub.x0 - half, 1, sub.total_in)
+
+
+def render_peak_bytes(box, k, stamp_npix):
+    """Estimated peak memory [bytes] while render_subgrid runs; 0 if box is None.
+
+    box : (y0, y1, x0, x1) footprint on the detector; ny, nx = its size [detector px]
+    k : sub-grid factor; the resampled sub-grid (n_sub values) is kept during rendering
+    stamp_npix : PSF stamp [px]; the rendered output covers the stamp-padded footprint
+        (n_padded detector px)
+    """
+    if box is None:
+        return 0
+    y0, y1, x0, x1 = box
+    ny, nx = y1 - y0, x1 - x0
+    n_sub = ny * nx * k * k                                    # kept sub-grid
+    n_padded = (ny + stamp_npix - 1) * (nx + stamp_npix - 1)   # convolution output
+    return 8 * (n_sub + RENDER_FLOATS_PER_PADDED_PIXEL * n_padded)
 
 
 def render_scene(shape, xs, ys, fluxes_e, psf_os, oversample, wing=None,

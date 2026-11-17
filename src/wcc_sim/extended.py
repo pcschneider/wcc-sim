@@ -15,7 +15,7 @@ memory for a full frame; sampling profiles as dense point grids would need
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, NamedTuple
 
 import numpy as np
 from astropy import units as u
@@ -29,6 +29,15 @@ from .starflux import REF_MAG, rate_for_ab, rate_for_spt
 _REFINE = 9         # subgrid factor for the central cusp
 _REFINE_HALF_MIN = 8   # px; refinement box half-width bounds
 _REFINE_HALF_MAX = 64
+
+
+class MemoryEstimate(NamedTuple):
+    """Standard information for peak memory usage of an ExtendedComponent's rate_map."""
+
+    box: tuple | None              #: footprint (y0, y1, x0, x1) [detector px]; None: off-frame
+    k: int                         #: sub-grid factor
+    resample_bytes: int            #: estimated peak memory of rate_map [bytes]
+    shape_in: tuple | None = None  #: input image shape (ny, nx), for the MemoryLimitError message
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -53,6 +62,12 @@ class ExtendedComponent(ABC):
     @abstractmethod
     def footprint(self, det_wcs, det_shape):
         """Detector pixels (y0, y1, x0, x1) the source covers, or None."""
+
+    def memory_estimate(self, det_wcs, det_shape, plate_scale_mas, k=None):
+        """Estimated max memory usage of rate_map as MemoryEstimate, or None if this component
+        shall not be checked against max_memory_gb. Default: None; subclasses whose
+        rate_map needs much memory should override it."""
+        return None
 
     def to_record(self):
         """Description of the source for the COMP table (FITS output)."""

@@ -25,14 +25,13 @@ def simulate_image(image, *, ra=None, dec=None, offset_arcsec=(0.0, 0.0), pa=0.0
     pointing (PNTSRC, CEN_RA/DEC, OFFSRA/DEC), the total rate (IMGTOT) and the
     total flux in the detector band (FLUXJY, FLUXFLAM, FLUXBAND); the COMP
     extension describes the image.
-    
+
     The input image must have the standard, celestial WCS information (TAN: CTYPE1/2,
-    CRVAL1/2, CRPIX1/2 and CDELT1/2 or a CD/PC matrix) with finite, non-negative
-    values. The Meaning of the pixel values must be given in the header by BUNIT 
-    or in `flux_unit`. Supported units: flux density per pixel (Jy/pixel, mJy/pix, plain Jy), 
+    CRVAL1/2, CRPIX1/2 and CDELT1/2 or a CD/PC matrix). Pixel values must be finite, non-negative.
+    The meaning of the pixel values must be given in the header by BUNIT
+    or in `flux_unit`. Supported units: flux density per pixel (Jy/pixel, mJy/pix, plain Jy),
     surface brightness (Jy/arcsec2, MJy/sr), F_lambda (erg/(s cm2 Angstrom) [/pix | /arcsec2]),
     electron/s [/pix].
-
 
     Parameters
     ----------
@@ -90,15 +89,20 @@ def simulate_image(image, *, ra=None, dec=None, offset_arcsec=(0.0, 0.0), pa=0.0
         Write the multi-extension FITS file (SCI, SATMASK, CAT, CLEAN, COMP).
     write_clean : bool, default True
         Include noiseless CLEAN extension in `output`.
-    max_memory_gb : float or None, default 4
-        Limit [GB = 1e9 bytes] for the estimated peak memory of the resampling.
-        None disables the check.
+    max_memory_gb : float or None, default 8
+        Limit [GB = 1e9 bytes] for the estimated peak memory of resampling and PSF
+        convolution. None disables the check.
 
     Returns
     -------
     SimulatedField
         ADU image, e- image, saturation mask, empty star catalogue, `components`
         table (one row per image) and `params` (settings and derived values).
+
+    Raises
+    ------
+    MemoryLimitError
+        If the estimated peak memory exceeds `max_memory_gb` (subclass of MemoryError).
 
     Examples
     --------
